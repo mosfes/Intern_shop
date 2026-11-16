@@ -1,0 +1,23 @@
+// Prisma schema — TiDB is MySQL-compatible, so we use the "mysql" provider.
+// The connection URL lives in prisma.config.ts (Prisma 7+), not here.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// NOTE: If your TiDB cluster does not support foreign keys (TiDB < 8.5),
+// emulate relations in Prisma instead:  relationMode = "prisma"  (in datasource)
+// and add @@index on every relation scalar field.
+
+model Task {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(255)
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,158 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
+/* ------------------------------------------------------------------
+ * Design tokens — EDM PC Shop premium tech store
+ * Overrides HeroUI theme variables so every HeroUI component picks
+ * up the brand palette automatically.
+ * ------------------------------------------------------------------ */
+@layer base {
+  :root,
+  .light,
+  [data-theme="light"] {
+    --accent: #c2410c;
+    --accent-foreground: #ffffff;
+    --focus: #c2410c;
+
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --surface: #ffffff;
+    --surface-foreground: #0f172a;
+    --surface-secondary: #f1f5f9;
+    --surface-tertiary: #e2e8f0;
+    --overlay: #ffffff;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --separator: #e2e8f0;
+    --default: #f1f5f9;
+    --default-foreground: #0f172a;
+    --field-background: #ffffff;
+    --field-border: #e2e8f0;
+    --field-border-width: 1px;
+
+    --radius: 0.5rem;
+    --field-radius: 0.5rem;
+
+    --art-bg: #f1f5f9;
+    --surface-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 1px rgb(15 23 42 / 0.03);
+    --card-hover-shadow: 0 12px 32px -12px rgb(15 23 42 / 0.18);
+  }
+
+  .dark,
+  [data-theme="dark"] {
+    --radius: 0.5rem;
+    --field-radius: 0.5rem;
+
+    --accent: #f97316;
+    --accent-foreground: #0a0a0a;
+    --focus: #f97316;
+
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --surface: #141414;
+    --surface-foreground: #ededed;
+    --surface-secondary: #1c1c1c;
+    --surface-tertiary: #262626;
+    --overlay: #141414;
+    --muted: #a3a3a3;
+    --border: #262626;
+    --separator: #262626;
+    --default: #1c1c1c;
+    --default-foreground: #ededed;
+    --field-background: #111111;
+    --field-border: #262626;
+
+    --art-bg: #1a1a1a;
+    --card-hover-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.6);
+  }
+}
+
+@theme inline {
+  --font-sans: var(--font-kanit), ui-sans-serif, system-ui, sans-serif;
+  --color-art: var(--art-bg);
+}
+
+:root {
+  /* Keep the runtime token available to HeroUI and inherited form styles. */
+  --font-sans: var(--font-kanit), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thai text needs a little more line-height to keep vowels/tone marks readable */
+:lang(th) body {
+  line-height: 1.6;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.5s ease both;
+}
+
+/* Brand marquee: the track holds the list twice, so sliding it by -50% loops seamlessly */
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  animation: marquee 40s linear infinite;
+}
+.marquee:hover .marquee-track,
+.marquee:focus-within .marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* No auto-scroll: show one static, swipeable row instead (the 0.01ms rule above would make the loop flicker) */
+  .marquee {
+    overflow-x: auto;
+  }
+  .marquee-track {
+    animation: none !important;
+  }
+  .marquee-dup {
+    display: none;
+  }
+}
+
+/* Keep HeroUI cards in line with the rest of the site's corners (12px) */
+.card {
+  border-radius: var(--radius-xl);
+}

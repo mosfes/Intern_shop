@@ -1,0 +1,398 @@
+[
+  {
+    "slug": "amd-ryzen-7-9800x3d",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/71891",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2024110616131371891_3.jpg",
+      "https://www.jib.co.th/img_master/product/original/2024110616131371891_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2024110616131371891_2.jpg"
+    ],
+    "images": [
+      "/images/products/amd-ryzen-7-9800x3d/3.webp",
+      "/images/products/amd-ryzen-7-9800x3d/1.webp",
+      "/images/products/amd-ryzen-7-9800x3d/2.webp"
+    ]
+  },
+  {
+    "slug": "intel-core-ultra-7-265k",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/71188",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2024100909443071188_1.jpg"
+    ],
+    "images": [
+      "/images/products/intel-core-ultra-7-265k/1.webp"
+    ]
+  },
+  {
+    "slug": "amd-ryzen-5-9600x",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/69751",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2024080913172569751_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2024080913172569751_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/2024080913172569751_3.jpg"
+    ],
+    "images": [
+      "/images/products/amd-ryzen-5-9600x/1.webp",
+      "/images/products/amd-ryzen-5-9600x/2.webp",
+      "/images/products/amd-ryzen-5-9600x/3.webp"
+    ]
+  },
+  {
+    "slug": "intel-core-ultra-9-285k",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/71190",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2024100909554471190_1.jpg"
+    ],
+    "images": [
+      "/images/products/intel-core-ultra-9-285k/1.webp"
+    ]
+  },
+  {
+    "slug": "asus-tuf-geforce-rtx-5070",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/74862",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2025030510224574862_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250701165245_74862_287_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250701165247_74862_287_3.jpg"
+    ],
+    "images": [
+      "/images/products/asus-tuf-geforce-rtx-5070/1.webp",
+      "/images/products/asus-tuf-geforce-rtx-5070/2.webp",
+      "/images/products/asus-tuf-geforce-rtx-5070/3.webp"
+    ]
+  },
+  {
+    "slug": "msi-geforce-rtx-5070-ti-gaming-trio",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/76779",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2025051909572176779_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250730162151_76779_287_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250730162153_76779_287_3.jpg"
+    ],
+    "images": [
+      "/images/products/msi-geforce-rtx-5070-ti-gaming-trio/1.webp",
+      "/images/products/msi-geforce-rtx-5070-ti-gaming-trio/2.webp",
+      "/images/products/msi-geforce-rtx-5070-ti-gaming-trio/3.webp"
+    ]
+  },
+  {
+    "slug": "sapphire-pulse-radeon-rx-9070-xt",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/74899",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2025030611053474899_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250729164552_74899_287_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250729164554_74899_287_3.jpg"
+    ],
+    "images": [
+      "/images/products/sapphire-pulse-radeon-rx-9070-xt/1.webp",
+      "/images/products/sapphire-pulse-radeon-rx-9070-xt/2.webp",
+      "/images/products/sapphire-pulse-radeon-rx-9070-xt/3.webp"
+    ]
+  },
+  {
+    "slug": "gigabyte-aorus-geforce-rtx-5080-master",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/73913",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2025012715580773913_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250130164423_73913_287_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250130164425_73913_287_3.jpg"
+    ],
+    "images": [
+      "/images/products/gigabyte-aorus-geforce-rtx-5080-master/1.webp",
+      "/images/products/gigabyte-aorus-geforce-rtx-5080-master/2.webp",
+      "/images/products/gigabyte-aorus-geforce-rtx-5080-master/3.webp"
+    ]
+  },
+  {
+    "slug": "kingston-fury-beast-ddr5-32gb-6000",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/74973",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2025030715050974973_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2025030715050974973_2.jpg"
+    ],
+    "images": [
+      "/images/products/kingston-fury-beast-ddr5-32gb-6000/1.webp",
+      "/images/products/kingston-fury-beast-ddr5-32gb-6000/2.webp"
+    ]
+  },
+  {
+    "slug": "corsair-vengeance-rgb-ddr5-32gb-6400",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/84423",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/20260407141401_0000084423_66_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/20260407141403_0000084423_66_2.jpg"
+    ],
+    "images": [
+      "/images/products/corsair-vengeance-rgb-ddr5-32gb-6400/1.webp",
+      "/images/products/corsair-vengeance-rgb-ddr5-32gb-6400/2.webp"
+    ]
+  },
+  {
+    "slug": "gskill-trident-z5-rgb-ddr5-64gb-6000",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/74238",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2025020713330974238_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2025020713340574238_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2025020713340574238_2.jpg"
+    ],
+    "images": [
+      "/images/products/gskill-trident-z5-rgb-ddr5-64gb-6000/1.webp",
+      "/images/products/gskill-trident-z5-rgb-ddr5-64gb-6000/2.webp",
+      "/images/products/gskill-trident-z5-rgb-ddr5-64gb-6000/3.webp"
+    ]
+  },
+  {
+    "slug": "samsung-990-pro-2tb",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/61614",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2023082416295161614_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2023082416295161614_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/2023082416295161614_3.jpg"
+    ],
+    "images": [
+      "/images/products/samsung-990-pro-2tb/1.webp",
+      "/images/products/samsung-990-pro-2tb/2.webp",
+      "/images/products/samsung-990-pro-2tb/3.webp"
+    ]
+  },
+  {
+    "slug": "wd-black-sn850x-1tb",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/55937",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2022102516290155937_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2022102516290155937_2.jpg"
+    ],
+    "images": [
+      "/images/products/wd-black-sn850x-1tb/1.webp",
+      "/images/products/wd-black-sn850x-1tb/2.webp"
+    ]
+  },
+  {
+    "slug": "crucial-t705-2tb-pcie5",
+    "sourcePage": "https://www.newegg.com/crucial-2tb-t705-nvme/p/N82E16820156398",
+    "sourceImages": [
+      "https://c1.neweggimages.com/productimage/nb640/20-156-397-09.png",
+      "https://c1.neweggimages.com/productimage/nb640/20-156-398-01.png"
+    ],
+    "images": [
+      "/images/products/crucial-t705-2tb-pcie5/1.webp",
+      "/images/products/crucial-t705-2tb-pcie5/2.webp"
+    ]
+  },
+  {
+    "slug": "asus-rog-strix-x870e-e-gaming-wifi",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/70944",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2024092714552870944_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2024092714325570944_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2024092714325570944_2.jpg"
+    ],
+    "images": [
+      "/images/products/asus-rog-strix-x870e-e-gaming-wifi/1.webp",
+      "/images/products/asus-rog-strix-x870e-e-gaming-wifi/2.webp",
+      "/images/products/asus-rog-strix-x870e-e-gaming-wifi/3.webp"
+    ]
+  },
+  {
+    "slug": "msi-mag-b850-tomahawk-wifi",
+    "sourcePage": "https://www.msi.com/Motherboard/MAG-B850-TOMAHAWK-WIFI/Gallery",
+    "sourceImages": [
+      "https://storage-asset.msi.com/global/picture/product/product_1761122211d80681cf66d7c7aa60a4f5573331e7bf.webp",
+      "https://storage-asset.msi.com/global/picture/product/product_17610170461a18f0ace6f91e4278991debca2dbba1.webp"
+    ],
+    "images": [
+      "/images/products/msi-mag-b850-tomahawk-wifi/2.webp",
+      "/images/products/msi-mag-b850-tomahawk-wifi/1.webp"
+    ]
+  },
+  {
+    "slug": "gigabyte-z890-aorus-elite-wifi7",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/73785",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2025012209592673785_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2025012209592673785_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/2025012209592673785_3.jpg"
+    ],
+    "images": [
+      "/images/products/gigabyte-z890-aorus-elite-wifi7/1.webp",
+      "/images/products/gigabyte-z890-aorus-elite-wifi7/2.webp",
+      "/images/products/gigabyte-z890-aorus-elite-wifi7/3.webp"
+    ]
+  },
+  {
+    "slug": "corsair-rm850x-850w-gold",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/71710",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/20250702151933_71710_287_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2025070215195471710_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2025070215195471710_2.jpg"
+    ],
+    "images": [
+      "/images/products/corsair-rm850x-850w-gold/1.webp",
+      "/images/products/corsair-rm850x-850w-gold/2.webp",
+      "/images/products/corsair-rm850x-850w-gold/3.webp"
+    ]
+  },
+  {
+    "slug": "seasonic-focus-gx-1000",
+    "sourcePage": "https://seasonic.com/focus-gx/",
+    "sourceImages": [
+      "https://seasonic.com/wp-content/uploads/2024/04/FOCUS-PX-GX-1000-850-connector-plate-leveled-scaled.webp",
+      "https://seasonic.com/wp-content/uploads/2024/04/FOCUS-PX-GX-vertical-300x222.webp"
+    ],
+    "images": [
+      "/images/products/seasonic-focus-gx-1000/1.webp",
+      "/images/products/seasonic-focus-gx-1000/2.webp"
+    ]
+  },
+  {
+    "slug": "nzxt-kraken-elite-360-rgb",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/73692",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2025011715331673692_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2025012816202573692_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2025012816202573692_2.jpg"
+    ],
+    "images": [
+      "/images/products/nzxt-kraken-elite-360-rgb/1.webp",
+      "/images/products/nzxt-kraken-elite-360-rgb/2.webp",
+      "/images/products/nzxt-kraken-elite-360-rgb/3.webp"
+    ]
+  },
+  {
+    "slug": "noctua-nh-d15-g2",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/74546",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/20250826135957_74546_436_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/20251110164813_74546_287_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/20251110164815_74546_287_3.jpg"
+    ],
+    "images": [
+      "/images/products/noctua-nh-d15-g2/1.webp",
+      "/images/products/noctua-nh-d15-g2/2.webp",
+      "/images/products/noctua-nh-d15-g2/3.webp"
+    ]
+  },
+  {
+    "slug": "arctic-liquid-freezer-iii-360",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/66240",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2024032110293166240_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2024032110293166240_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/20240323153922_66240_287_3.jpg"
+    ],
+    "images": [
+      "/images/products/arctic-liquid-freezer-iii-360/1.webp",
+      "/images/products/arctic-liquid-freezer-iii-360/2.webp",
+      "/images/products/arctic-liquid-freezer-iii-360/3.webp"
+    ]
+  },
+  {
+    "slug": "lian-li-o11-dynamic-evo",
+    "sourcePage": "https://lian-li.com/product/o11-dynamic-evo/",
+    "sourceImages": [
+      "https://lian-li.com/wp-content/uploads/2021/12/evo-600-000.jpg",
+      "https://lian-li.com/wp-content/uploads/2021/12/evo-600-001.jpg",
+      "https://lian-li.com/wp-content/uploads/2021/12/evo-600-002.jpg"
+    ],
+    "images": [
+      "/images/products/lian-li-o11-dynamic-evo/1.webp",
+      "/images/products/lian-li-o11-dynamic-evo/2.webp",
+      "/images/products/lian-li-o11-dynamic-evo/3.webp"
+    ]
+  },
+  {
+    "slug": "fractal-design-north",
+    "sourcePage": "https://www.fractal-design.com/products/cases/north-series/north/north-charcoal-black/",
+    "sourceImages": [
+      "https://assets.fractal-design.com/images/uxzbxy2o/production/a31378f20e4b244ff9cfab9084f01d824e09ccbd-2560x3200.png?w=1200"
+    ],
+    "images": [
+      "/images/products/fractal-design-north/1.webp"
+    ]
+  },
+  {
+    "slug": "lg-ultragear-27-oled-240hz",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/87484",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/202609021110390000087484_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/20260902115541_0000087484_464_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/20260902115544_0000087484_464_3.jpg"
+    ],
+    "images": [
+      "/images/products/lg-ultragear-27-oled-240hz/1.webp",
+      "/images/products/lg-ultragear-27-oled-240hz/2.webp",
+      "/images/products/lg-ultragear-27-oled-240hz/3.webp"
+    ]
+  },
+  {
+    "slug": "samsung-odyssey-g7-32-4k",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/74241",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/20250211164543_74241_287_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250211164545_74241_287_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/2025020714153174241_4.jpg"
+    ],
+    "images": [
+      "/images/products/samsung-odyssey-g7-32-4k/1.webp",
+      "/images/products/samsung-odyssey-g7-32-4k/2.webp",
+      "/images/products/samsung-odyssey-g7-32-4k/3.webp"
+    ]
+  },
+  {
+    "slug": "asus-proart-pa278cv",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/51855",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/20220302165902_51855_352_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2022030216592451855_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2022030216592451855_2.jpg"
+    ],
+    "images": [
+      "/images/products/asus-proart-pa278cv/1.webp",
+      "/images/products/asus-proart-pa278cv/2.webp",
+      "/images/products/asus-proart-pa278cv/3.webp"
+    ]
+  },
+  {
+    "slug": "logitech-g-pro-x-superlight-2",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/61791",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/20250619154956_61791_66_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250623170508_61791_287_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250623170510_61791_287_3.jpg"
+    ],
+    "images": [
+      "/images/products/logitech-g-pro-x-superlight-2/1.webp",
+      "/images/products/logitech-g-pro-x-superlight-2/2.webp",
+      "/images/products/logitech-g-pro-x-superlight-2/3.webp"
+    ]
+  },
+  {
+    "slug": "razer-blackwidow-v4-pro",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/59044",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2023042510042259044_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/20230504163716_59044_287_2.jpg",
+      "https://www.jib.co.th/img_master/product/original/20230504163719_59044_287_3.jpg"
+    ],
+    "images": [
+      "/images/products/razer-blackwidow-v4-pro/1.webp",
+      "/images/products/razer-blackwidow-v4-pro/2.webp",
+      "/images/products/razer-blackwidow-v4-pro/3.webp"
+    ]
+  },
+  {
+    "slug": "steelseries-arctis-nova-pro-wireless",
+    "sourcePage": "https://www.jib.co.th/web/product/readProduct/70979",
+    "sourceImages": [
+      "https://www.jib.co.th/img_master/product/original/2024092816172070979_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/2025071410503470979_1.jpg",
+      "https://www.jib.co.th/img_master/product/original/20250714112215_70979_436_3.jpg"
+    ],
+    "images": [
+      "/images/products/steelseries-arctis-nova-pro-wireless/1.webp",
+      "/images/products/steelseries-arctis-nova-pro-wireless/2.webp",
+      "/images/products/steelseries-arctis-nova-pro-wireless/3.webp"
+    ]
+  }
+]
