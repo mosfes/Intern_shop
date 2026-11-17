@@ -1,6 +1,7 @@
 import type { Order, OrderStatus } from "./types";
 
 export const ORDER_STATUSES = ["processing", "shipped", "delivered", "cancelled"] as const satisfies readonly OrderStatus[];
+export const ORDER_FULFILMENT_STEPS = ["processing", "shipped", "delivered"] as const satisfies readonly OrderStatus[];
 export const isOrderStatus = (value: unknown): value is OrderStatus => ORDER_STATUSES.includes(value as OrderStatus);
 
 export const orderStatusLabel: Record<OrderStatus, string> = {
@@ -11,13 +12,13 @@ export const orderStatusLabel: Record<OrderStatus, string> = {
 };
 
 /**
- * Where an admin may move a paid order. Cancelled is final: refunds happen in the Omise dashboard,
+ * Paid orders move forward one step at a time. Delivered and cancelled are final: refunds happen in the Omise dashboard,
  * so reopening a cancelled order could ship goods that were already refunded.
  */
 export const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   processing: ["shipped", "cancelled"],
-  shipped: ["processing", "delivered", "cancelled"],
-  delivered: ["shipped"],
+  shipped: ["delivered", "cancelled"],
+  delivered: [],
   cancelled: [],
 };
 

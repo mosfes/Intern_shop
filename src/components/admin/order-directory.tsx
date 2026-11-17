@@ -4,11 +4,11 @@ import { useAdminFetch } from "./admin-data";
 
 import { Fragment, useEffect, useState } from "react";
 import Image from "next/image";
-import { Label, ListBox, Modal, Select } from "@heroui/react";
-import { ChevronDownIcon, PackageIcon, PrinterIcon, SearchIcon } from "@/components/icons";
+import { Modal } from "@heroui/react";
+import { ArrowRightIcon, CheckIcon, ChevronDownIcon, PackageIcon, PrinterIcon, SearchIcon } from "@/components/icons";
 import { useFeedback } from "@/components/feedback-provider";
 import { formatBaht } from "@/lib/format";
-import { MAX_ADMIN_NOTE_LENGTH, MAX_TRACKING_LENGTH, ORDER_STATUSES, ORDER_TRANSITIONS, orderStatusLabel, type AdminOrderList, type AdminOrderRow } from "@/lib/admin-orders";
+import { MAX_ADMIN_NOTE_LENGTH, MAX_TRACKING_LENGTH, ORDER_FULFILMENT_STEPS, ORDER_STATUSES, ORDER_TRANSITIONS, orderStatusLabel, type AdminOrderList, type AdminOrderRow } from "@/lib/admin-orders";
 import type { OrderStatus } from "@/lib/types";
 import { AdminPageHeader } from "./user-directory";
 
@@ -116,7 +116,7 @@ export function OrderDirectory({ cache }: { cache: Map<string, AdminOrderList> }
                     className={`${actionClass} inline-flex items-center gap-1.5 whitespace-nowrap`}><PrinterIcon size={15} />ใบสั่งซื้อ</a></td>
                 </tr>
                   {expanded && <tr id={`order-management-${row.id}`} className="border-b border-border bg-surface-secondary/40"><td colSpan={8} className="p-4 sm:p-5">
-                    <div className="sticky left-4 max-w-[calc(100vw-5.25rem)] lg:static lg:max-w-none">
+                    <div className="sticky left-4 max-w-[calc(100vw-5.25rem)] rounded-xl border border-border bg-background p-4 shadow-sm sm:p-5 lg:static lg:max-w-none">
                       <OrderUpdateForm key={`${row.id}-${row.updatedAt}`} row={row} inline onClose={() => setExpandedId(null)} onSavingChange={(saving) => setSavingId(saving ? row.id : null)} onSaved={() => { cache.clear(); setExpandedId(null); reload(); }} />
                     </div>
                   </td></tr>}
@@ -180,17 +180,18 @@ function OrderUpdateForm({ row, inline = false, onClose, onSaved, onSavingChange
   const adminFetch = useAdminFetch("orders");
   const showFeedback = useFeedback();
   const { order } = row;
-  const [status, setStatus] = useState<OrderStatus>(order.status);
   const [tracking, setTracking] = useState(order.trackingNumber ?? "");
   const [note, setNote] = useState(order.adminNote ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const options = [order.status, ...(ORDER_TRANSITIONS[order.status] ?? [])];
-  const changed = status !== order.status || tracking.trim() !== (order.trackingNumber ?? "") || note.trim() !== (order.adminNote ?? "");
+  const nextStatus = ORDER_TRANSITIONS[order.status]?.find((value) => value !== "cancelled");
+  const canCancel = ORDER_TRANSITIONS[order.status]?.includes("cancelled");
+  const currentStep = ORDER_FULFILMENT_STEPS.findIndex((value) => value === order.status);
+  const changed = tracking.trim() !== (order.trackingNumber ?? "") || note.trim() !== (order.adminNote ?? "");
   const locked = order.status === "cancelled";
 
-  async function save() {
-    if (!row.paid || !changed || saving) return;
+  async function save(status: OrderStatus = order.status) {
+    if (!row.paid || (status === order.status && !changed) || saving) return;
     if (status === "cancelled" && order.status !== "cancelled" && !window.confirm(`ยืนยันยกเลิกคำสั่งซื้อ #${order.id}?\nเปลี่ยนกลับไม่ได้ และระบบจะไม่คืนเงินให้อัตโนมัติ กรุณาคืนเงินผ่าน Omise Dashboard`)) return;
     setSaving(true); onSavingChange(true); setError("");
     try {
@@ -212,42 +213,49 @@ function OrderUpdateForm({ row, inline = false, onClose, onSaved, onSavingChange
     </div>
   </div>;
 
-  return <form aria-label={`จัดการสถานะคำสั่งซื้อ #${order.id}`} aria-busy={saving} className="space-y-4 text-sm" onSubmit={(event) => { event.preventDefault(); void save(); }}>
-    <div className="flex flex-wrap items-center gap-3">
-      <h3 className="font-semibold">จัดการสถานะ <span className="font-mono">#{order.id}</span></h3>
+  const stepper = <ol aria-label="ขั้นตอนการจัดส่ง" className={`flex items-start ${inline ? "max-w-xl" : ""}`}>
+    {ORDER_FULFILMENT_STEPS.map((value, index) => {
+      const done = index < currentStep || order.status === "delivered";
+      const current = index === currentStep && order.status !== "delivered";
+      return <li key={value} aria-current={current ? "step" : undefined} className="relative flex min-w-0 flex-1 flex-col items-center gap-2 px-1 text-center">
+        {index > 0 && <span aria-hidden="true" className={`absolute left-[calc(-50%+18px)] right-[calc(50%+18px)] top-4 h-0.5 rounded-full ${index <= currentStep ? "bg-accent" : "bg-border"}`} />}
+        <span className={`relative grid size-8 place-items-center rounded-full text-xs font-semibold ${done ? "bg-accent text-white" : current ? "bg-accent text-white ring-4 ring-accent/20" : "border border-border bg-surface-secondary text-muted"}`}>
+          {done ? <CheckIcon size={15} /> : index + 1}
+        </span>
+        <span className={`text-xs leading-tight ${current ? "font-semibold text-accent" : done ? "text-foreground" : "text-muted"}`}>{orderStatusLabel[value]}</span>
+      </li>;
+    })}
+  </ol>;
+
+  return <form aria-label={`จัดการสถานะคำสั่งซื้อ #${order.id}`} aria-busy={saving} className="space-y-5 text-sm" onSubmit={(event) => { event.preventDefault(); const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null; void save((submitter?.value || order.status) as OrderStatus); }}>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <h3 className="text-base font-semibold">จัดการสถานะ <span className="font-mono">#{order.id}</span></h3>
       <StatusBadge status={order.status} />
-      {inline && <span className="text-xs text-muted">{order.statusUpdatedAt ? `เปลี่ยนสถานะล่าสุด ${date(order.statusUpdatedAt)}` : `สั่งซื้อ ${date(row.createdAt)}`}</span>}
+      {inline && <span className="text-xs text-muted sm:ml-auto">{order.statusUpdatedAt ? `เปลี่ยนสถานะล่าสุด ${date(order.statusUpdatedAt)}` : `สั่งซื้อ ${date(row.createdAt)}`}</span>}
     </div>
-    <div className={inline ? "grid gap-4 md:grid-cols-3" : "space-y-4"}>
-      <div className="space-y-1.5">
-        <Select value={status} isDisabled={locked || saving} onChange={(key) => { if (options.includes(key as OrderStatus)) setStatus(key as OrderStatus); }} className="w-full min-w-0">
-          <Label className="text-xs text-muted">สถานะคำสั่งซื้อ</Label>
-          <Select.Trigger className="min-h-10 w-full rounded-lg"><Select.Value /><Select.Indicator /></Select.Trigger>
-          <Select.Popover>
-            <ListBox>{options.map((value) => {
-              const label = `${orderStatusLabel[value]}${value === order.status ? " (ปัจจุบัน)" : ""}`;
-              return <ListBox.Item key={value} id={value} textValue={label}>{label}<ListBox.ItemIndicator /></ListBox.Item>;
-            })}</ListBox>
-          </Select.Popover>
-        </Select>
-        <p className="text-xs text-muted">เลือกสถานะแล้วกดบันทึกการเปลี่ยนแปลง</p>
-      </div>
-      <label className="block space-y-1.5"><span className="text-xs text-muted">เลขพัสดุ (ไม่บังคับ)</span>
+    {!locked && <div className="space-y-3 rounded-xl bg-surface-secondary/70 px-4 py-4">
+      {stepper}
+      <p className={`text-xs text-muted ${inline ? "" : "text-center"}`}>{nextStatus ? "กด “ถัดไป” เพื่อบันทึกและเลื่อนไปขั้นต่อไป (ย้อนสถานะกลับไม่ได้)" : "จัดส่งสำเร็จแล้ว ไม่สามารถเปลี่ยนสถานะได้"}</p>
+    </div>}
+    <div className={inline ? "grid items-start gap-4 md:grid-cols-2" : "space-y-4"}>
+      <label className="block space-y-1.5"><span className="text-xs font-medium text-muted">เลขพัสดุ (ไม่บังคับ)</span>
         <input value={tracking} disabled={locked || saving} maxLength={MAX_TRACKING_LENGTH} pattern="[A-Za-z0-9 \-]*" title="ตัวอักษรอังกฤษ ตัวเลข ช่องว่าง และขีด ไม่เกิน 60 ตัว" onChange={(event) => setTracking(event.target.value)} placeholder="เช่น TH0123456789" className={`${inputClass} font-mono`} />
         <span className="block text-xs text-muted">ลูกค้าจะเห็นเลขนี้ในหน้าคำสั่งซื้อ</span>
       </label>
-      <label className="block space-y-1.5"><span className="text-xs text-muted">บันทึกภายใน (ลูกค้าไม่เห็น)</span>
-        <textarea value={note} disabled={saving} maxLength={MAX_ADMIN_NOTE_LENGTH} rows={inline ? 2 : 4} onChange={(event) => setNote(event.target.value)} className={`${inputClass} h-auto py-2`} />
-        <span className="block text-xs text-muted">{note.length}/{MAX_ADMIN_NOTE_LENGTH} ตัวอักษร</span>
+      <label className="block space-y-1.5"><span className="flex items-center justify-between gap-2 text-xs font-medium text-muted"><span>บันทึกภายใน (ลูกค้าไม่เห็น)</span><span className="font-normal tabular-nums">{note.length}/{MAX_ADMIN_NOTE_LENGTH}</span></span>
+        <textarea value={note} disabled={saving} maxLength={MAX_ADMIN_NOTE_LENGTH} rows={inline ? 3 : 4} onChange={(event) => setNote(event.target.value)} placeholder="เช่น ลูกค้าขอเลื่อนรับสินค้า" className={`${inputClass} h-auto min-h-[5.5rem] resize-y py-2`} />
       </label>
     </div>
-    {status === "cancelled" && !locked && <p className="rounded-lg bg-warning-soft p-3 text-xs text-warning">การยกเลิกเปลี่ยนกลับไม่ได้และไม่คืนเงินอัตโนมัติ กรุณาคืนเงินผ่าน Omise Dashboard แล้วจดบันทึกไว้ด้านบน</p>}
     {locked && <p className="rounded-lg bg-surface-secondary p-3 text-xs text-muted">คำสั่งซื้อที่ยกเลิกแล้วเปลี่ยนสถานะไม่ได้ แก้ได้เฉพาะบันทึกภายใน</p>}
     {error && <p role="alert" className="rounded-lg bg-danger-soft p-3 text-danger">{error}</p>}
-    <div className="flex flex-wrap gap-2">
-      <button type="submit" disabled={!changed || saving} className="rounded-lg bg-accent px-4 py-2 font-medium text-white disabled:opacity-50">{saving ? "กำลังบันทึก…" : "บันทึกการเปลี่ยนแปลง"}</button>
-      <button type="button" disabled={saving} onClick={onClose} className={actionClass}>ปิด</button>
-      {!inline && <a href={`/orders/${encodeURIComponent(order.id)}/document`} target="_blank" rel="noopener" className={`${actionClass} inline-flex items-center gap-2`}><PrinterIcon size={16} />ใบสั่งซื้อ</a>}
+    <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+      {canCancel && <button type="submit" value="cancelled" disabled={saving} className="rounded-lg px-3 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-50">ยกเลิกคำสั่งซื้อ</button>}
+      <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+        {!inline && <a href={`/orders/${encodeURIComponent(order.id)}/document`} target="_blank" rel="noopener" className={`${actionClass} inline-flex items-center gap-2`}><PrinterIcon size={16} />ใบสั่งซื้อ</a>}
+        <button type="button" disabled={saving} onClick={onClose} className={actionClass}>ปิด</button>
+        <button type="submit" value={order.status} disabled={!changed || saving} className={actionClass}>{saving ? "กำลังบันทึก…" : "บันทึกข้อมูล"}</button>
+        {nextStatus && <button type="submit" value={nextStatus} disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50">ถัดไป: {orderStatusLabel[nextStatus]}<ArrowRightIcon size={16} /></button>}
+      </div>
     </div>
   </form>;
 }

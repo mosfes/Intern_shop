@@ -60,13 +60,23 @@ async function cookie(id: string) {
 const list = async (as?: string, search = "") => GET(new NextRequest(`http://localhost:3000/api/admin/orders${search}`, { headers: as ? { cookie: await cookie(as) } : {} }));
 const patch = async (body: unknown, as = "admin") => PATCH(new NextRequest("http://localhost:3000/api/admin/orders", { method: "PATCH", headers: { cookie: await cookie(as), origin: "http://localhost:3000", "Content-Type": "application/json" }, body: JSON.stringify(body) }));
 
-test("status transitions follow the fulfilment flow and cancelled is final", () => {
+test("status transitions only move forward and delivered or cancelled are final", () => {
   const update = (status: string, extra = {}) => validateOrderUpdate({ id: "pay-1", status, ...extra });
   const shipped = applyOrderUpdate(order, update("shipped", { trackingNumber: " TH123 " }), new Date("2026-11-17T00:00:00Z"));
   assert.equal(shipped.status, "shipped");
   assert.equal(shipped.trackingNumber, "TH123");
   assert.equal(shipped.statusUpdatedAt, "2026-11-17T00:00:00.000Z");
   assert.throws(() => applyOrderUpdate(order, update("delivered")), /เปลี่ยนจาก/);
+  assert.throws(() => applyOrderUpdate(shipped, update("processing")), /เปลี่ยนจาก/);
+  const delivered = applyOrderUpdate(shipped, update("delivered"));
+  assert.equal(delivered.status, "delivered");
+  for (const status of ["processing", "shipped", "cancelled"]) {
+    assert.throws(() => applyOrderUpdate(delivered, update(status)), /เปลี่ยนจาก/);
+  }
+  const edited = applyOrderUpdate(delivered, update("delivered", { adminNote: "received" }));
+  assert.equal(edited.adminNote, "received");
+  assert.equal(edited.statusUpdatedAt, delivered.statusUpdatedAt);
+  assert.equal(applyOrderUpdate(shipped, update("cancelled")).status, "cancelled");
   const cancelled = applyOrderUpdate(order, update("cancelled"));
   assert.throws(() => applyOrderUpdate(cancelled, update("processing")), /ยกเลิกแล้ว/);
   assert.equal(applyOrderUpdate(cancelled, update("cancelled", { adminNote: "refunded" })).adminNote, "refunded");
@@ -145,7 +155,12 @@ test("admin updates status, rejects stale edits and keeps customers out", async 
   assert.equal((writes.at(-1) as Order).status, "shipped");
   // The same form submitted again carries the old timestamp.
   assert.equal((await patch({ id: "pay-1", status: "delivered", updatedAt: updatedAt.toISOString() })).status, 409);
-  assert.equal((await patch({ id: "pay-1", status: "processing", updatedAt: row.updatedAt.toISOString() })).status, 200);
+  const writesBefore = writes.length;
+  assert.equal((await patch({ id: "pay-1", status: "processing", updatedAt: row.updatedAt.toISOString() })).status, 409);
+  assert.equal(writes.length, writesBefore);
+  assert.equal((await patch({ id: "pay-1", status: "delivered", updatedAt: row.updatedAt.toISOString() })).status, 200);
+  assert.equal((await patch({ id: "pay-1", status: "shipped", updatedAt: row.updatedAt.toISOString() })).status, 409);
+  assert.equal((writes.at(-1) as Order).status, "delivered");
   assert.equal((await patch({ id: "missing", status: "shipped" })).status, 404);
   row = { ...row, status: "pending" };
   assert.equal((await patch({ id: "pay-1", status: "shipped" })).status, 404);

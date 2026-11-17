@@ -7,6 +7,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { Logo } from "@/components/icons";
 import { PrintButton } from "@/components/account/print-button";
+import { OrderPaper } from "@/components/account/order-paper";
 import { orderStatusLabel } from "@/lib/admin-orders";
 import { bahtText } from "@/lib/baht-text";
 import { formatBaht } from "@/lib/format";
@@ -60,14 +61,13 @@ async function PurchaseOrder({ params }: { params: Promise<{ id: string }> }) {
   return (
     <div className="min-h-screen bg-surface-secondary px-4 py-6 print:min-h-0 print:bg-white print:p-0">
       {/* Paper is A4 with a 15 mm margin; on screen the sheet below is drawn at the same size and margin. */}
-      <style>{"@page { size: A4; margin: 15mm; } @media print { html, body { background: #fff !important; } }"}</style>
+      <style>{"@page { size: A4; margin: 15mm; } @media print { html, body { background: #fff !important; } .order-paper-scale { zoom: 1 !important; } }"}</style>
       <div className="mx-auto mb-4 flex max-w-[210mm] flex-wrap items-center justify-between gap-3 print:hidden">
         <Link href={backHref} className="text-sm text-muted underline-offset-4 hover:text-foreground hover:underline">{paid || isAdmin ? "← กลับไปหน้าคำสั่งซื้อ" : "← กลับไปหน้าชำระเงิน"}</Link>
         <PrintButton />
       </div>
 
-      {/* On a phone the A4 sheet keeps its size and scrolls sideways instead of reflowing. */}
-      <div className="overflow-x-auto pb-2 print:overflow-visible print:pb-0">
+      <OrderPaper>
       <article aria-label={`ใบสั่งซื้อ ${order.id}`}
         className="relative mx-auto flex min-h-[297mm] w-[210mm] flex-col bg-white p-[15mm] text-[13px] leading-relaxed text-neutral-900 shadow-md print:min-h-[265mm] print:w-auto print:p-0 print:shadow-none">
         {!paid && (
@@ -152,7 +152,7 @@ async function PurchaseOrder({ params }: { params: Promise<{ id: string }> }) {
           </dl>
         </section>
       </article>
-      </div>
+      </OrderPaper>
     </div>
   );
 }
