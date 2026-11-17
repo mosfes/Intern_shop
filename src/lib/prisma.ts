@@ -1,5 +1,5 @@
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { PrismaClient } from "@/generated/prisma/client";
+import { Prisma, PrismaClient } from "@/generated/prisma/client";
 
 /**
  * Builds the MariaDB driver adapter from DATABASE_URL.
@@ -36,13 +36,28 @@ function createAdapter() {
   );
 }
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+  prismaSchema?: string;
+};
 
-// A regenerated schema can add models while next dev retains the old global client.
+/**
+ * Identifies the generated schema (every model and its scalar fields). next dev loads this module in
+ * several module graphs (route handlers, "use cache" functions, pages), each with its own PrismaClient
+ * class, so class identity cannot tell whether the cached client is current. This string is the same
+ * in every graph and changes only after `prisma generate`.
+ */
+const schema = JSON.stringify(Object.entries(Prisma).filter(([key]) => key.endsWith("ScalarFieldEnum")));
+
 const cached = globalForPrisma.prisma;
 export const prisma =
-  cached?.adminCredential && cached.adminLoginLimit && cached.product && cached.brand && cached.category && cached.categorySpecField && cached.imageUpload && cached.promotion && cached.cartItem && cached.customerAddress && cached.discountCode && cached.paymentCharge && cached.checkoutPayment && !("adminEmail" in cached)
+  cached && globalForPrisma.prismaSchema === schema
     ? cached
     : new PrismaClient({ adapter: createAdapter() });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== "production" && prisma !== cached) {
+  globalForPrisma.prisma = prisma;
+  globalForPrisma.prismaSchema = schema;
+  // Modules that have not reloaded yet may still be mid-query on the old client.
+  if (cached) setTimeout(() => void cached.$disconnect().catch(() => undefined), 60_000).unref?.();
+}

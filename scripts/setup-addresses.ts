@@ -9,6 +9,10 @@ async function main() {
     for (const statement of sql.split(";").map((part) => part.trim()).filter(Boolean)) {
       await prisma.$executeRawUnsafe(statement);
     }
+    const columns = await prisma.$queryRaw<Array<{ Field: string }>>`SHOW COLUMNS FROM CustomerAddress LIKE 'subdistrict'`;
+    if (columns.length === 0) {
+      await prisma.$executeRaw`ALTER TABLE CustomerAddress ADD COLUMN subdistrict VARCHAR(100) NOT NULL DEFAULT '' AFTER district`;
+    }
     console.log("Address table is ready.");
   } finally { await prisma.$disconnect(); }
 }

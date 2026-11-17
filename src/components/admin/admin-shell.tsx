@@ -4,12 +4,12 @@ import { Drawer } from "@heroui/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { ArrowRightIcon, BoltIcon, ChevronDownIcon, GridIcon, ListIcon, PackageIcon, LogoutIcon, ShieldIcon, StoreIcon, TagIcon, UserIcon, UsersIcon } from "@/components/icons";
+import { ArrowRightIcon, BoltIcon, ChevronDownIcon, GridIcon, ListIcon, PackageIcon, LogoutIcon, ShieldIcon, StoreIcon, TagIcon, TruckIcon, UserIcon, UsersIcon } from "@/components/icons";
 import { storeActions } from "@/lib/store";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Container } from "@/components/ui/section";
 
-export type AdminSection = "overview" | "customer" | "admin" | "products" | "categories" | "brands" | "promotions" | "discounts";
+export type AdminSection = "logs" | "overview" | "orders" | "customer" | "admin" | "products" | "categories" | "brands" | "promotions" | "flash-sale" | "discounts";
 export type AdminIdentity = { name: string; email: string; picture?: string | null };
 
 type MenuItem = { id: AdminSection; label: string; icon: typeof GridIcon };
@@ -17,6 +17,7 @@ type MenuGroup = { id: string; label: string; icon: typeof GridIcon; children: M
 // Add future sections or groups here. Long menus scroll independently of the workspace.
 const menu: (MenuItem | MenuGroup)[] = [
   { id: "overview", label: "ภาพรวม", icon: GridIcon },
+  { id: "orders", label: "คำสั่งซื้อ", icon: TruckIcon },
   { id: "catalog", label: "จัดการสินค้า", icon: StoreIcon, children: [
     { id: "products", label: "สินค้า", icon: PackageIcon },
     { id: "categories", label: "หมวดหมู่", icon: ListIcon },
@@ -24,12 +25,14 @@ const menu: (MenuItem | MenuGroup)[] = [
   ] },
   { id: "storefront", label: "หน้าร้าน", icon: GridIcon, children: [
     { id: "promotions", label: "โปรโมชัน", icon: BoltIcon },
+    { id: "flash-sale", label: "แฟลชเซล", icon: BoltIcon },
     { id: "discounts", label: "โค้ดส่วนลด", icon: TagIcon },
   ] },
   { id: "users", label: "จัดการผู้ใช้", icon: UsersIcon, children: [
     { id: "customer", label: "ลูกค้า", icon: UserIcon },
     { id: "admin", label: "แอดมิน", icon: ShieldIcon },
   ] },
+  { id: "logs", label: "ประวัติกิจกรรม", icon: ListIcon },
 ];
 
 export function AdminShell({ section, onNavigate, user, children }: { section: AdminSection; onNavigate: (section: AdminSection) => void; user: AdminIdentity; children: ReactNode }) {

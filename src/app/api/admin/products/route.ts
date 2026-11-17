@@ -1,3 +1,4 @@
+import { withAdminActivity } from "@/lib/admin-activity";
 import { type NextRequest } from "next/server";
 import { revalidateTag } from "next/cache";
 import { adminJson, authorizeAdmin, authorizeAdminSession } from "@/lib/admin-auth";
@@ -59,6 +60,12 @@ async function mutate(request: NextRequest, method: "POST" | "PUT" | "DELETE") {
   } catch (error) { return failure(error); }
 }
 
-export const POST = (request: NextRequest) => mutate(request, "POST");
-export const PUT = (request: NextRequest) => mutate(request, "PUT");
-export const DELETE = (request: NextRequest) => mutate(request, "DELETE");
+const handlePOST = (request: NextRequest) => mutate(request, "POST");
+const handlePUT = (request: NextRequest) => mutate(request, "PUT");
+const handleDELETE = (request: NextRequest) => mutate(request, "DELETE");
+
+export const POST = withAdminActivity("products", handlePOST);
+
+export const PUT = withAdminActivity("products", handlePUT);
+
+export const DELETE = withAdminActivity("products", handleDELETE);

@@ -1,22 +1,10 @@
 "use client";
 
-import { Avatar, Chip, ProgressBar, Table, Tabs } from "@heroui/react";
-import { Rating } from "@/components/product/product-bits";
+import { Table, Tabs } from "@heroui/react";
 import { CheckCircleIcon } from "@/components/icons";
-import { formatThaiDate } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
-/** Plausible rating distribution derived from the average (mock data). */
-function distribution(p: Product) {
-  const five = Math.round(Math.min(92, Math.max(40, (p.rating - 3.5) * 55)));
-  const four = Math.round((100 - five) * 0.62);
-  const three = Math.round((100 - five - four) * 0.6);
-  const two = Math.round((100 - five - four - three) * 0.6);
-  return [five, four, three, two, Math.max(0, 100 - five - four - three - two)];
-}
-
 export function DetailTabs({ product }: { product: Product }) {
-  const dist = distribution(product);
   return (
     <Tabs defaultSelectedKey="overview">
       <Tabs.ListContainer className="overflow-x-auto no-scrollbar">
@@ -27,10 +15,6 @@ export function DetailTabs({ product }: { product: Product }) {
           </Tabs.Tab>
           <Tabs.Tab id="specs" className="px-4">
             สเปกสินค้า
-            <Tabs.Indicator />
-          </Tabs.Tab>
-          <Tabs.Tab id="reviews" className="px-4">
-            รีวิว ({product.reviewCount})
             <Tabs.Indicator />
           </Tabs.Tab>
         </Tabs.List>
@@ -87,55 +71,6 @@ export function DetailTabs({ product }: { product: Product }) {
         </Table>
       </Tabs.Panel>
 
-      <Tabs.Panel id="reviews" className="pt-6">
-        <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-          <div className="h-fit rounded-xl border border-border bg-surface p-5">
-            <p className="text-5xl font-semibold tracking-tight">{product.rating.toFixed(1)}</p>
-            <div className="mt-2">
-              <Rating value={product.rating} size={18} />
-            </div>
-            <p className="mt-1 text-sm text-muted">จาก {product.reviewCount.toLocaleString("en-US")} รีวิว</p>
-            <div className="mt-5 space-y-2">
-              {dist.map((pct, i) => (
-                <div key={i} className="flex items-center gap-3 text-xs">
-                  <span className="w-8 text-muted">{5 - i} ดาว</span>
-                  <ProgressBar aria-label={`${5 - i} ดาว ${pct}%`} value={pct} className="flex-1">
-                    <ProgressBar.Track>
-                      <ProgressBar.Fill />
-                    </ProgressBar.Track>
-                  </ProgressBar>
-                  <span className="w-8 text-right tabular-nums text-muted">{pct}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <ul className="divide-y divide-border">
-            {product.reviews.map((r) => (
-              <li key={r.id} className="py-5 first:pt-0">
-                <div className="flex items-center gap-3">
-                  <Avatar size="sm" variant="soft">
-                    <Avatar.Fallback>{r.author.slice(0, 1)}</Avatar.Fallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{r.author}</p>
-                    <p className="text-xs text-muted">{formatThaiDate(r.date)}</p>
-                  </div>
-                  {r.verified && (
-                    <Chip size="sm" variant="soft" color="success">
-                      ซื้อแล้ว
-                    </Chip>
-                  )}
-                </div>
-                <div className="mt-3">
-                  <Rating value={r.rating} size={13} />
-                </div>
-                <p className="mt-2 font-medium">{r.title}</p>
-                <p className="mt-1 text-sm text-muted">{r.body}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </Tabs.Panel>
     </Tabs>
   );
 }

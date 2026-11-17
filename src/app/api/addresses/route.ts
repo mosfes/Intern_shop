@@ -6,9 +6,9 @@ import { prisma } from "@/lib/prisma";
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
-const publicAddress = (a: { id: string; label: string; fullName: string; phone: string; address: string; province: string; district: string; postcode: string; isDefault: boolean }) => ({
+const publicAddress = (a: { id: string; label: string; fullName: string; phone: string; address: string; province: string; district: string; subdistrict: string; postcode: string; isDefault: boolean }) => ({
   id: a.id, label: a.label, fullName: a.fullName, phone: a.phone, address: a.address,
-  province: a.province, district: a.district, postcode: a.postcode, isDefault: a.isDefault,
+  province: a.province, district: a.district, subdistrict: a.subdistrict, postcode: a.postcode, isDefault: a.isDefault,
 });
 
 /** The signed-in customer's saved addresses, default first. */

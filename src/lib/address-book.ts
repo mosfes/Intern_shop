@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { AddressInput, SavedAddress } from "@/lib/addresses";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
+import type { AddressInput } from "@/lib/addresses";
+
+import { addressSnapshot, loadAddressBook, reloadAddressBook, subscribeAddresses } from "./address-book-cache";
 
 export type AddressResult = { ok: true } | { ok: false; message: string };
 
@@ -20,39 +22,18 @@ async function call(url: string, method: string, body?: unknown): Promise<Addres
   }
 }
 
-async function fetchAddresses() {
-  const response = await fetch("/api/addresses", { cache: "no-store" });
-  if (!response.ok) throw new Error("load failed");
-  return ((await response.json()) as { addresses: SavedAddress[] }).addresses;
-}
-
-/** The signed-in customer's saved addresses. `addresses` is null until the first load finishes. */
-export function useAddressBook(enabled: boolean) {
-  const [addresses, setAddresses] = useState<SavedAddress[] | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  const reload = useCallback(async () => {
-    try {
-      const list = await fetchAddresses();
-      setAddresses(list);
-      setFailed(false);
-    } catch {
-      setFailed(true);
-      setAddresses((current) => current ?? []);
-    }
-  }, []);
+/** Shared, account-scoped addresses; preloaded after session verification. */
+export function useAddressBook(account: string | null) {
+  const { addresses, failed } = useSyncExternalStore(
+    subscribeAddresses,
+    () => addressSnapshot(account),
+    () => addressSnapshot(null),
+  );
+  const reload = useCallback(() => account ? reloadAddressBook(account) : Promise.resolve(), [account]);
 
   useEffect(() => {
-    if (!enabled) return;
-    let active = true;
-    fetchAddresses().then(
-      (list) => active && (setAddresses(list), setFailed(false)),
-      () => active && (setFailed(true), setAddresses((current) => current ?? [])),
-    );
-    return () => {
-      active = false;
-    };
-  }, [enabled]);
+    if (account) void loadAddressBook(account);
+  }, [account]);
 
   const run = async (result: Promise<AddressResult>) => {
     const outcome = await result;

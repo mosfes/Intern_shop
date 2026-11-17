@@ -12,6 +12,19 @@ export function HeroSlider({ slides }: { slides: Promotion[] }) {
   const [index, setIndex] = useState(0);
   const count = slides.length;
   const [paused, setPaused] = useState(false);
+  // Hidden slides sit in the viewport (stacked, opacity 0), so lazy loading can't defer them. Render their
+  // images only after the page has loaded, so they don't compete with the first slide (the LCP image).
+  const [pageLoaded, setPageLoaded] = useState(false);
+
+  useEffect(() => {
+    const done = () => setPageLoaded(true);
+    if (document.readyState === "complete") {
+      const id = window.setTimeout(done, 0);
+      return () => window.clearTimeout(id);
+    }
+    window.addEventListener("load", done, { once: true });
+    return () => window.removeEventListener("load", done);
+  }, []);
 
   useEffect(() => {
     if (paused || count < 2) return;
@@ -47,7 +60,7 @@ export function HeroSlider({ slides }: { slides: Promotion[] }) {
             }`}
           >
             <div className="edm-promo-productStage">
-              <Image
+              {(i === current || pageLoaded) && <Image
               src={s.image}
               alt=""
               fill
@@ -55,7 +68,7 @@ export function HeroSlider({ slides }: { slides: Promotion[] }) {
               fetchPriority={i === 0 ? "high" : undefined}
               sizes="(min-width: 1024px) 900px, 100vw"
               className="object-contain p-0 sm:p-3"
-              />
+              />}
             </div>
             <div className="edm-promo-campaign relative z-10 w-full sm:max-w-[56%]">
               {s.tag && <span className="edm-promo-campaignTag">{s.tag}</span>}

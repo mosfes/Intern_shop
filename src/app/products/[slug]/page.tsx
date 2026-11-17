@@ -8,6 +8,7 @@ import { ProductGallery } from "@/components/product-detail/gallery";
 import { PurchasePanel } from "@/components/product-detail/purchase-panel";
 import { ProductDetailSkeleton } from "@/components/product-detail/detail-skeleton";
 import { Container, SectionHeader } from "@/components/ui/section";
+import { toCardProduct } from "@/lib/catalog";
 import { getCatalog } from "@/lib/catalog-server";
 
 export async function generateStaticParams() {
@@ -59,7 +60,7 @@ async function ProductDetail({ params }: { params: Promise<{ slug: string }> }) 
 
       <section className="mt-20">
         <SectionHeader title="สินค้าที่เกี่ยวข้อง" href={`/products?category=${product.category}`} />
-        <ProductGrid products={getRelatedProducts(product)} />
+        <ProductGrid products={getRelatedProducts(product).map(toCardProduct)} />
       </section>
     </Container>
   );

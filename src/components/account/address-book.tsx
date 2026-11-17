@@ -14,6 +14,7 @@ const emptyDraft = (user: { name: string; phone?: string }): AddressInput => ({
   address: "",
   province: "",
   district: "",
+  subdistrict: "",
   postcode: "",
 });
 
@@ -43,7 +44,7 @@ function AddressForm({
         setSaving(true);
         setError("");
         const result = await onSubmit(
-          { label: d.label ?? "", fullName: d.fullName, phone: d.phone, address: d.address, province: d.province, district: d.district, postcode: d.postcode },
+          { label: d.label ?? "", fullName: d.fullName, phone: d.phone, address: d.address, province: d.province, district: d.district, subdistrict: d.subdistrict, postcode: d.postcode },
           isDefault,
         );
         setSaving(false);
@@ -69,7 +70,7 @@ function AddressForm({
         <TextArea placeholder="บ้านเลขที่ อาคาร ถนน" rows={2} />
         <FieldError>กรุณากรอกที่อยู่</FieldError>
       </TextField>
-      <ShippingAddressFields defaults={initial.province ? { province: initial.province, district: initial.district, postcode: initial.postcode } : undefined} />
+      <ShippingAddressFields defaults={initial.province ? { province: initial.province, district: initial.district, subdistrict: initial.subdistrict, postcode: initial.postcode } : undefined} />
       {canSetDefault && (
         <Checkbox isSelected={isDefault} onChange={setIsDefault} isDisabled={isFirst || initial.isDefault === true} className="sm:col-span-2">
           <Checkbox.Control>
@@ -98,8 +99,8 @@ function AddressForm({
 }
 
 /** "ที่อยู่จัดส่งของฉัน" — lets a customer keep several addresses and reuse them on later orders. */
-export function AddressBook({ user, className }: { user: { name: string; phone?: string }; className?: string }) {
-  const book = useAddressBook(true);
+export function AddressBook({ user, className }: { user: { googleId?: string; name: string; phone?: string }; className?: string }) {
+  const book = useAddressBook(user.googleId ?? null);
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const list = book.addresses;

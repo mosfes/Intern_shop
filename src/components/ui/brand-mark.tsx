@@ -1,6 +1,6 @@
 "use client";
 
-import { useCatalog } from "@/components/catalog-provider";
+import { useCatalogMeta } from "@/components/catalog-provider";
 import { brandColors, brandLogoMap, nativeColorLogos } from "@/data/brand-logos";
 
 const maskStyle = (src: string): React.CSSProperties => ({
@@ -20,7 +20,7 @@ const maskStyle = (src: string): React.CSSProperties => ({
  * Single-colour SVGs are drawn as a CSS mask filled with the brand colour; logos that already have their own colours use <img>.
  */
 export function BrandMark({ brand, compact = false }: { brand: string; compact?: boolean }) {
-  const { uploadedLogoUrl } = useCatalog();
+  const { uploadedLogoUrl } = useCatalogMeta();
   const logo = brandLogoMap[brand];
   const colors = brandColors[brand] ?? { light: "#374151", dark: "#D1D5DB" };
   const vars = { "--bc": colors.light, "--bc-dark": colors.dark } as React.CSSProperties;
@@ -33,7 +33,7 @@ export function BrandMark({ brand, compact = false }: { brand: string; compact?:
     return (
       <span
         aria-hidden={compact || undefined}
-        className={`line-clamp-2 max-w-full px-1 text-center font-extrabold uppercase leading-[1.1] tracking-wide text-[var(--bc)] dark:text-[var(--bc-dark)] ${compact ? "text-[11px]" : "text-[13px]"}`}
+        className={`line-clamp-2 max-w-full px-1 text-center font-semibold uppercase leading-[1.1] tracking-wide text-[var(--bc)] dark:text-[var(--bc-dark)] ${compact ? "text-[11px]" : "text-[13px]"}`}
         style={vars}
       >
         {compact ? brand.slice(0, 2) : brand}

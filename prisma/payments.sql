@@ -20,5 +20,6 @@ CREATE TABLE IF NOT EXISTS `CheckoutPayment` (
     `updatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     PRIMARY KEY (`id`),
     UNIQUE INDEX `CheckoutPayment_chargeId_key` (`chargeId`),
-    INDEX `CheckoutPayment_userId_status_createdAt_idx` (`userId`, `status`, `createdAt`)
+    INDEX `CheckoutPayment_userId_status_createdAt_idx` (`userId`, `status`, `createdAt`),
+    INDEX `CheckoutPayment_status_createdAt_idx` (`status`, `createdAt`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

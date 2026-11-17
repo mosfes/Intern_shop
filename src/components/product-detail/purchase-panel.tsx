@@ -5,21 +5,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BoltIcon, CheckIcon, RefreshIcon, ShieldIcon, TruckIcon } from "@/components/icons";
-import { AddToCartButton, Price, Rating, StockChip, WishlistButton } from "@/components/product/product-bits";
-import { useCatalog } from "@/components/catalog-provider";
+import { AddToCartButton, Price, StockChip, WishlistButton } from "@/components/product/product-bits";
+import { useCatalogMeta } from "@/components/catalog-provider";
 import { formatBaht } from "@/lib/format";
 import { CART_LIMIT_MESSAGE, MAX_LINE_QUANTITY } from "@/lib/cart-limits";
 import { CHECKOUT_LOGIN_HREF } from "@/lib/auth-redirect";
 import { ADMIN_ORDER_BLOCKED_MESSAGE, storeActions, useIsAdmin, useStore } from "@/lib/store";
+import { usePricedProduct } from "@/components/product/use-priced-product";
 import type { Product } from "@/lib/types";
 
-export function PurchasePanel({ product }: { product: Product }) {
+export function PurchasePanel({ product: rawProduct }: { product: Product }) {
+  const product = usePricedProduct(rawProduct);
   const [qty, setQty] = useState(1);
   const router = useRouter();
   const isAdmin = useIsAdmin();
   const signedIn = useStore((s) => s.user !== null);
   const soldOut = product.stock <= 0;
-  const category = useCatalog().categoryMap.get(product.category);
+  const category = useCatalogMeta().categoryMap.get(product.category);
 
   return (
     <div className="flex flex-col gap-5">
@@ -48,7 +50,6 @@ export function PurchasePanel({ product }: { product: Product }) {
         </div>
         <h1 className="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">{product.name}</h1>
         <div className="flex flex-wrap items-center gap-3">
-          <Rating value={product.rating} count={product.reviewCount} size={16} />
           <span className="text-xs text-muted">รหัสสินค้า {product.id.toUpperCase()}</span>
         </div>
       </div>

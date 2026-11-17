@@ -1,3 +1,4 @@
+import { withAdminActivity } from "@/lib/admin-activity";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { adminJson as json, authorizeAdmin as authorize } from "@/lib/admin-auth";
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   } catch { return json({ error: "โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง" }, 503); }
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   try {
     const denied = await authorize(request, true);
     if (denied) return denied;
@@ -84,3 +85,5 @@ export async function PATCH(request: NextRequest) {
     return json({ error: "บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง" }, 503);
   }
 }
+
+export const PATCH = withAdminActivity("users", handlePATCH);

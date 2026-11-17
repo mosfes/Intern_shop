@@ -10,6 +10,7 @@ export interface AddressInput {
   address: string;
   province: string;
   district: string;
+  subdistrict: string;
   postcode: string;
 }
 
@@ -37,7 +38,10 @@ export function validateAddress(body: unknown): AddressInput {
   const postcode = text(b.postcode, 10, "postcode");
   const area = provinces.find((p) => p.name === province)?.districts.find((d) => d.name === district);
   if (!area) throw new AddressError("district");
-  if (!area.postcodes.includes(postcode)) throw new AddressError("postcode");
+  const subdistrict = text(b.subdistrict, 100, "subdistrict");
+  const locality = area.subdistricts.find((item) => item.name === subdistrict);
+  if (!locality) throw new AddressError("subdistrict");
+  if (locality.postcode !== postcode) throw new AddressError("postcode");
   const phone = text(b.phone, 30, "phone");
   if (!/^[0-9\- ]{9,12}$/.test(phone)) throw new AddressError("phone");
   return {
@@ -47,12 +51,13 @@ export function validateAddress(body: unknown): AddressInput {
     address: text(b.address, 500, "address"),
     province,
     district,
+    subdistrict,
     postcode,
   };
 }
 
-export const formatAddressLine = (a: Pick<AddressInput, "address" | "district" | "province" | "postcode">) =>
-  `${a.address} ${a.district} ${a.province} ${a.postcode}`;
+export const formatAddressLine = (a: Pick<AddressInput, "address" | "subdistrict" | "district" | "province" | "postcode">) =>
+  `${a.address} ${a.subdistrict ? `${a.subdistrict} ` : ""}${a.district} ${a.province} ${a.postcode}`;
 
 /** Default first, then oldest first (the order the API returns them in). */
 export function sortAddresses<T extends { isDefault: boolean }>(list: T[]): T[] {

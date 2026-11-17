@@ -19,7 +19,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import {
   BoltIcon,
@@ -37,10 +37,10 @@ import {
   SunIcon,
   UserIcon,
 } from "@/components/icons";
-import { useCatalog } from "@/components/catalog-provider";
+import { useCatalogMeta } from "@/components/catalog-provider";
 import { scenePhotos } from "@/data/photos";
 import { formatBaht } from "@/lib/format";
-import { searchProducts } from "@/lib/search";
+import type { SearchSuggestion } from "@/lib/search";
 import type { DemoUser } from "@/lib/types";
 import { storeActions, useCartCount, useStore } from "@/lib/store";
 
@@ -86,12 +86,32 @@ function useSubmitSearch() {
   };
 }
 
+/** Top matches from /api/search/suggestions, debounced; [] until the current query's results arrive. */
+function useSearchSuggestions(query: string) {
+  const term = query.trim();
+  const [result, setResult] = useState<{ term: string; products: SearchSuggestion[] }>({ term: "", products: [] });
+  useEffect(() => {
+    if (term.length < 2) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      fetch(`/api/search/suggestions?q=${encodeURIComponent(term)}`, { signal: controller.signal })
+        .then((response) => response.ok ? response.json() : Promise.reject())
+        .then(({ products }: { products: SearchSuggestion[] }) => setResult({ term, products }))
+        .catch(() => { /* Aborted or offline — keep showing nothing for this term. */ });
+    }, 150);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [term]);
+  return term.length >= 2 && result.term === term ? result.products : [];
+}
+
 function HeaderSearch({ autoFocus, onDone }: { autoFocus?: boolean; onDone?: () => void }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const submit = useSubmitSearch();
-  const { products, categoryMap } = useCatalog();
-  const suggestions = query.trim().length >= 2 ? searchProducts(query, products, categoryMap).slice(0, 5) : [];
+  const suggestions = useSearchSuggestions(query);
 
   return (
     <div className="relative w-full max-w-xl">
@@ -129,7 +149,7 @@ function HeaderSearch({ autoFocus, onDone }: { autoFocus?: boolean; onDone?: () 
                   className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-secondary"
                 >
                   <span className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-art">
-                    <Image src={p.images[0]} alt="" fill sizes="40px" className="object-cover " />
+                    <Image src={p.image} alt="" fill sizes="40px" className="object-cover " />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{p.name}</span>
@@ -343,7 +363,7 @@ function UserMenu({ fallbackUser }: { fallbackUser?: DemoUser }) {
 
 // ---------------------------------------------------------------- categories
 function CategoryBar() {
-  const { categories } = useCatalog();
+  const { categories } = useCatalogMeta();
   const isPcBuilder = usePathname() === "/pc-builder";
   return (
     <nav aria-label="หมวดหมู่สินค้า" className="hidden border-t border-border lg:block">
@@ -380,7 +400,7 @@ function CategoryBar() {
 }
 
 function MegaMenu() {
-  const { categories } = useCatalog();
+  const { categories } = useCatalogMeta();
   const [isOpen, setOpen] = useState(false);
   return (
     <Popover isOpen={isOpen} onOpenChange={setOpen}>
@@ -438,7 +458,7 @@ function MegaMenu() {
 
 // ---------------------------------------------------------------- mobile
 function MobileNav() {
-  const { categories } = useCatalog();
+  const { categories } = useCatalogMeta();
   const isPcBuilder = usePathname() === "/pc-builder";
   const [isOpen, setOpen] = useState(false);
   const user = useStore((s) => s.user);

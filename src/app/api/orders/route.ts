@@ -1,8 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { customerOrder } from "@/lib/admin-orders";
 import { customerFromRequest } from "@/lib/customer-session";
 import { getCharge } from "@/lib/omise";
 import { settleCharge } from "@/lib/payment-settlement";
 import { prisma } from "@/lib/prisma";
+import type { Order } from "@/lib/types";
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -14,6 +16,6 @@ export async function GET(request: NextRequest) {
     const pending = await prisma.checkoutPayment.findMany({ where: { userId: user.googleId, status: "pending", chargeId: { not: null } }, orderBy: { createdAt: "desc" }, take: 5 });
     await Promise.allSettled(pending.map(async (payment) => settleCharge(await getCharge(payment.chargeId!))));
     const paid = await prisma.checkoutPayment.findMany({ where: { userId: user.googleId, status: "successful" }, orderBy: { createdAt: "desc" } });
-    return json({ orders: paid.map((payment) => payment.order) });
+    return json({ orders: paid.map((payment) => customerOrder(payment.order as unknown as Order)) });
   } catch { return json({ error: "โหลดคำสั่งซื้อไม่สำเร็จ" }, 503); }
 }

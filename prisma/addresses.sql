@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `CustomerAddress` (
     `address` VARCHAR(500) NOT NULL,
     `province` VARCHAR(100) NOT NULL,
     `district` VARCHAR(100) NOT NULL,
+    `subdistrict` VARCHAR(100) NOT NULL DEFAULT '',
     `postcode` VARCHAR(10) NOT NULL,
     `isDefault` BOOLEAN NOT NULL DEFAULT false,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),

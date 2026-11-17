@@ -3,9 +3,11 @@
 import { Modal, buttonVariants } from "@heroui/react";
 import Link from "next/link";
 import { createContext, use, useCallback, useMemo, useState, type ReactNode } from "react";
-import { useCatalog } from "@/components/catalog-provider";
+import { useCatalogMeta } from "@/components/catalog-provider";
+import { usePriceTime } from "./use-priced-product";
+import { withFlashSalePrice } from "@/lib/flash-sale";
 import type { Product } from "@/lib/types";
-import { AddToCartButton, DiscountChip, Price, ProductImage, Rating, StockChip, WishlistButton } from "./product-bits";
+import { AddToCartButton, DiscountChip, Price, ProductImage, StockChip, WishlistButton } from "./product-bits";
 
 const QuickViewContext = createContext<{ open: (p: Product) => void }>({ open: () => {} });
 
@@ -14,13 +16,15 @@ export function useQuickView() {
 }
 
 export function QuickViewProvider({ children }: { children: ReactNode }) {
-  const { categoryMap } = useCatalog();
-  const [product, setProduct] = useState<Product | null>(null);
+  const { categoryMap } = useCatalogMeta();
+  const [selectedProduct, setProduct] = useState<Product | null>(null);
+  const now = usePriceTime(selectedProduct ? [selectedProduct] : []);
+  const product = selectedProduct ? withFlashSalePrice(selectedProduct, now) : null;
   const [isOpen, setOpen] = useState(false);
   const open = useCallback((p: Product) => {
     setProduct(p);
     setOpen(true);
-  }, []);
+  }, [setOpen, setProduct]);
   const value = useMemo(() => ({ open }), [open]);
 
   return (
@@ -47,7 +51,6 @@ export function QuickViewProvider({ children }: { children: ReactNode }) {
                       {product.brand} · {categoryMap.get(product.category)?.nameTh}
                     </span>
                     <h2 className="text-xl font-semibold leading-snug">{product.name}</h2>
-                    <Rating value={product.rating} count={product.reviewCount} />
                     <Price product={product} size="lg" />
                     <StockChip stock={product.stock} />
                     <ul className="space-y-1 text-sm text-muted">

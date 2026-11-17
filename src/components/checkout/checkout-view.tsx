@@ -10,6 +10,7 @@ import {
   Label,
   Radio,
   RadioGroup,
+  Skeleton,
   TextArea,
   TextField,
   buttonVariants,
@@ -80,7 +81,7 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
   // "new" = type an address by hand; otherwise the id of a saved address that fills the form.
   const [pickedId, setPickedId] = useState<string | "new" | null>(null);
   const [saveForLater, setSaveForLater] = useState(true);
-  const book = useAddressBook(hydrated && !!user?.googleId && !isAdmin);
+  const book = useAddressBook(hydrated && !isAdmin ? user?.googleId ?? null : null);
   const router = useRouter();
   const mustSignIn = hydrated && !user;
 
@@ -157,7 +158,7 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
               discountCode: coupon?.code,
               address: {
                 fullName: data.fullName, phone: data.phone, address: data.address,
-                province: data.province, district: data.district, postcode: data.postcode,
+                province: data.province, district: data.district, subdistrict: data.subdistrict, postcode: data.postcode,
               },
             }),
           });
@@ -174,9 +175,9 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
           savePendingPayment({ chargeId: result.chargeId, order });
           if (activeId === "new" && saveForLater) {
             // Best effort: a failure here is not shown as an error.
-            const duplicate = (saved ?? []).some((a) => formatAddressLine(a) === formatAddressLine({ address: data.address, district: data.district, province: data.province, postcode: data.postcode }) && a.fullName === data.fullName);
+            const duplicate = (saved ?? []).some((a) => formatAddressLine(a) === formatAddressLine({ address: data.address, district: data.district, subdistrict: data.subdistrict, province: data.province, postcode: data.postcode }) && a.fullName === data.fullName);
             if (!duplicate) {
-              void book.add({ label: "", fullName: data.fullName, phone: data.phone, address: data.address, province: data.province, district: data.district, postcode: data.postcode });
+              void book.add({ label: "", fullName: data.fullName, phone: data.phone, address: data.address, province: data.province, district: data.district, subdistrict: data.subdistrict, postcode: data.postcode });
             }
           }
           // Banks and 3-D Secure take the customer away to approve; everything else waits on our status page.
@@ -190,10 +191,17 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
     >
       <div className="min-w-0 space-y-5">
         <Step n={1} title="ข้อมูลการจัดส่ง">
+          {saved === null && user.googleId && (
+            <div role="status" aria-label="กำลังโหลดที่อยู่ที่บันทึกไว้" className="mb-5 space-y-2">
+              <p className="text-sm text-muted">กำลังโหลดที่อยู่ที่บันทึกไว้...</p>
+              <Skeleton className="h-24 rounded-xl" />
+            </div>
+          )}
+          {book.failed && <p role="alert" className="mb-4 text-sm text-danger">โหลดที่อยู่ที่บันทึกไว้ไม่สำเร็จ <Button type="button" size="sm" variant="ghost" onPress={() => { void book.reload(); }}>ลองอีกครั้ง</Button></p>}
           {saved && saved.length > 0 && (
             <SavedAddressPicker addresses={saved} value={activeId} onChange={setPickedId} />
           )}
-          <div key={activeId ?? "loading"} className="grid gap-4 sm:grid-cols-2">
+          <fieldset disabled={saved === null && !!user.googleId} key={activeId ?? "loading"} className="grid min-w-0 gap-4 sm:grid-cols-2">
             <TextField name="fullName" isRequired defaultValue={picked?.fullName ?? user?.name} autoComplete="name">
               <Label>ชื่อ-นามสกุล</Label>
               <Input placeholder="สมชาย ใจดี" />
@@ -215,7 +223,7 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
               <TextArea placeholder="บ้านเลขที่ อาคาร ถนน" rows={2} />
               <FieldError>กรุณากรอกที่อยู่</FieldError>
             </TextField>
-            <ShippingAddressFields defaults={picked ? { province: picked.province, district: picked.district, postcode: picked.postcode } : undefined} />
+            <ShippingAddressFields defaults={picked ? { province: picked.province, district: picked.district, subdistrict: picked.subdistrict, postcode: picked.postcode } : undefined} />
             {activeId === "new" && book.addresses !== null && !book.failed && (
               <Checkbox isSelected={saveForLater} onChange={setSaveForLater} className="sm:col-span-2">
                 <Checkbox.Control>
@@ -226,7 +234,7 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
                 </Checkbox.Content>
               </Checkbox>
             )}
-          </div>
+          </fieldset>
         </Step>
 
         <Step n={2} title="วิธีการจัดส่ง">
@@ -322,7 +330,7 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
             onError={setCodeError}
           />
           {payError && <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">{payError}</p>}
-          <Button type="submit" size="lg" fullWidth isPending={submitting} isDisabled={!paymentsEnabled}>
+          <Button type="submit" size="lg" fullWidth isPending={submitting} isDisabled={!paymentsEnabled || (saved === null && !!user.googleId)}>
             {submitting ? "กำลังดำเนินการ..." : `ชำระเงิน · ${formatBaht(payable)}`}
           </Button>
           <p className="flex items-start gap-1.5 text-xs text-muted">

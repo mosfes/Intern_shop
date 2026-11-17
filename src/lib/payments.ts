@@ -1,3 +1,4 @@
+import { withFlashSalePrice } from "./flash-sale";
 import { applyDiscountCode, type DiscountCode } from "./discount-codes";
 import { MAX_CART_LINES, MAX_LINE_QUANTITY } from "./cart-limits";
 import { shippingCost, shippingOptions, type ShippingId } from "./format";
@@ -44,7 +45,7 @@ export function priceOrder(lines: unknown, productMap: Map<string, Product>, shi
     const product = productMap.get(productId);
     if (!product) throw new PaymentError("มีสินค้าในตะกร้าที่ไม่มีจำหน่ายแล้ว กรุณากลับไปตรวจสอบตะกร้า", 409);
     if (product.stock < (quantity as number)) throw new PaymentError(`${product.name} มีสินค้าไม่พอ (เหลือ ${Math.max(0, product.stock)} ชิ้น)`, 409);
-    subtotal += product.price * (quantity as number);
+    subtotal += withFlashSalePrice(product, now.getTime()).price * (quantity as number);
   }
   const discount = code ? applyDiscountCode(code, subtotal, now) : 0;
   const ship = shippingCost(shipping as ShippingId, subtotal);

@@ -1,4 +1,5 @@
-import { registerGoogleUser } from "@/lib/shop-users";
+import { registerGoogleUser, userRole } from "@/lib/shop-users";
+import { recordAdminAuth } from "@/lib/admin-activity";
 import { type NextRequest, NextResponse } from "next/server";
 import { cookieOptions, FLOW_COOKIE, googleConfig, readAuthToken, SESSION_AGE, SESSION_COOKIE, signAuthToken } from "@/lib/google-auth";
 
@@ -20,9 +21,10 @@ export async function GET(request: NextRequest) {
     if (!profile?.sub || !profile.email || !profile.email_verified || profile.nonce !== flow.nonce) {
       throw new Error("Invalid Google identity");
     }
-    await registerGoogleUser({ sub: profile.sub, email: profile.email, name: profile.name, picture: profile.picture });
+    const user = await registerGoogleUser({ sub: profile.sub, email: profile.email, name: profile.name, picture: profile.picture });
     // Google is the identity provider; first-time users enter directly without a registration form.
     const session = await signAuthToken({ sub: profile.sub, email: profile.email, name: profile.name || profile.email.split("@")[0], picture: profile.picture ?? null }, "session", SESSION_AGE);
+    if (await userRole(user.email) === "admin") await recordAdminAuth(user, "LOGIN_GOOGLE", request);
     response = NextResponse.redirect(new URL("/auth/complete", origin));
     response.cookies.set(SESSION_COOKIE, session, { ...cookieOptions, maxAge: SESSION_AGE });
   } catch {

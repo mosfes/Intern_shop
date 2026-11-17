@@ -60,12 +60,15 @@ function AddressSelect({
   );
 }
 
-export function ShippingAddressFields({ defaults }: { defaults?: { province: string; district: string; postcode: string } }) {
+export function ShippingAddressFields({ defaults }: { defaults?: { province: string; district: string; subdistrict?: string; postcode: string } }) {
   const [province, setProvince] = useState(defaults?.province ?? "กรุงเทพมหานคร");
   const [district, setDistrict] = useState(defaults?.district ?? "");
+  const [subdistrict, setSubdistrict] = useState(defaults?.subdistrict ?? "");
   const [postcode, setPostcode] = useState(defaults?.postcode ?? "");
   const districts = provinces.find((item) => item.name === province)?.districts ?? [];
-  const postcodes = districts.find((item) => item.name === district)?.postcodes ?? [];
+  const subdistricts = districts.find((item) => item.name === district)?.subdistricts ?? [];
+  const selectedSubdistrict = subdistricts.find((item) => item.name === subdistrict);
+  const postcodes = selectedSubdistrict ? [selectedSubdistrict.postcode] : [];
 
   return (
     <>
@@ -78,6 +81,7 @@ export function ShippingAddressFields({ defaults }: { defaults?: { province: str
         onChange={(value) => {
           setProvince(value);
           setDistrict("");
+          setSubdistrict("");
           setPostcode("");
         }}
       />
@@ -90,17 +94,29 @@ export function ShippingAddressFields({ defaults }: { defaults?: { province: str
         isDisabled={!province}
         onChange={(value) => {
           setDistrict(value);
-          const codes = districts.find((item) => item.name === value)?.postcodes ?? [];
-          setPostcode(codes.length === 1 ? codes[0] : "");
+          setSubdistrict("");
+          setPostcode("");
+        }}
+      />
+      <AddressSelect
+        name="subdistrict"
+        label="แขวง / ตำบล"
+        placeholder={district ? "เลือกแขวง / ตำบล" : "เลือกเขต / อำเภอก่อน"}
+        value={subdistrict}
+        options={subdistricts.map((item) => item.name).sort((a, b) => a.localeCompare(b, "th"))}
+        isDisabled={!district}
+        onChange={(value) => {
+          setSubdistrict(value);
+          setPostcode(subdistricts.find((item) => item.name === value)?.postcode ?? "");
         }}
       />
       <AddressSelect
         name="postcode"
         label="รหัสไปรษณีย์"
-        placeholder={district ? "เลือกรหัสไปรษณีย์" : "เลือกเขต / อำเภอก่อน"}
+        placeholder={subdistrict ? "เลือกรหัสไปรษณีย์" : "เลือกแขวง / ตำบลก่อน"}
         value={postcode}
         options={postcodes}
-        isDisabled={!district}
+        isDisabled={!subdistrict}
         onChange={setPostcode}
       />
     </>

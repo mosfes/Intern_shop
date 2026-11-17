@@ -2,18 +2,12 @@
 
 import { Tabs } from "@heroui/react";
 import { ProductGrid } from "@/components/product/product-card";
-import { useCatalog } from "@/components/catalog-provider";
-import type { ProductTag } from "@/lib/types";
+import type { Product, ProductTag } from "@/lib/types";
 
-const tabs: { id: ProductTag; label: string }[] = [
-  { id: "best-seller", label: "ขายดี" },
-  { id: "new", label: "มาใหม่" },
-  { id: "recommended", label: "แนะนำ" },
-  { id: "special-offer", label: "ข้อเสนอพิเศษ" },
-];
+export type FeaturedTab = { id: ProductTag; label: string; products: Product[] };
 
-export function FeaturedTabs() {
-  const { getProductsByTag } = useCatalog();
+/** Products per tab are picked on the server (see app/page.tsx) so the catalogue isn't shipped to the browser. */
+export function FeaturedTabs({ tabs }: { tabs: FeaturedTab[] }) {
   return (
     <Tabs defaultSelectedKey="best-seller" className="w-full">
       <Tabs.ListContainer className="mb-6 overflow-x-auto no-scrollbar">
@@ -28,7 +22,7 @@ export function FeaturedTabs() {
       </Tabs.ListContainer>
       {tabs.map((t) => (
         <Tabs.Panel key={t.id} id={t.id} className="animate-fade-up">
-          <ProductGrid products={getProductsByTag(t.id, 8)} />
+          <ProductGrid products={t.products} />
         </Tabs.Panel>
       ))}
     </Tabs>

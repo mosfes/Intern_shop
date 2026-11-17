@@ -4,6 +4,10 @@ import { test } from "node:test";
 import { createRequire } from "node:module";
 import { NextRequest } from "next/server";
 import { prisma } from "../src/lib/prisma";
+
+// Isolate audit persistence in route tests.
+Object.defineProperty(prisma.adminActivityLog, "create", { configurable: true, value: async () => ({ id: "test-log" }) });
+Object.defineProperty(prisma.adminActivityLog, "update", { configurable: true, value: async () => ({}) });
 import { SESSION_COOKIE, signAuthToken } from "../src/lib/google-auth";
 import { GET, POST, PUT, DELETE } from "../src/app/api/admin/products/route";
 import { validateProductInput } from "../src/lib/product-management";

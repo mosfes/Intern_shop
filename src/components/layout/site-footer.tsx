@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Logo, MailIcon, MapPinIcon, PhoneIcon } from "@/components/icons";
 import { getCatalogData } from "@/lib/catalog-server";
-import { NewsletterForm } from "./newsletter-form";
 
 const helpLinks = [
   { href: "/orders", label: "ติดตามคำสั่งซื้อ" },
@@ -14,7 +13,7 @@ export async function SiteFooter() {
   const { categories } = await getCatalogData();
   return (
     <footer className="mt-20 border-t border-border bg-surface">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.3fr]">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
         <div className="space-y-4">
           <Logo />
           <p className="max-w-xs text-sm text-muted">
@@ -58,11 +57,6 @@ export async function SiteFooter() {
             <li>การรับประกันสินค้า</li>
           </ul>
         </nav>
-        <div>
-          <h2 className="mb-2 text-sm font-semibold">รับข่าวสารและโปรโมชัน</h2>
-          <p className="mb-4 text-sm text-muted">สมัครรับดีลพิเศษและสินค้าใหม่ก่อนใคร</p>
-          <NewsletterForm />
-        </div>
       </div>
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-6 text-xs text-muted sm:flex-row sm:px-6">

@@ -1,3 +1,4 @@
+import { withAdminActivity } from "@/lib/admin-activity";
 import type { NextRequest } from "next/server";
 import { revalidateTag } from "next/cache";
 import { adminJson, authorizeAdmin, authorizeAdminSession } from "@/lib/admin-auth";
@@ -61,7 +62,7 @@ async function save(request: NextRequest, method: "POST" | "PUT") {
 }
 
 /** PATCH: { action: "toggle", id, active } or { action: "reorder", placement, ids }. */
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   try {
     const { denied } = await authorizeAdminSession(request, true);
     if (denied) return denied;
@@ -79,7 +80,7 @@ export async function PATCH(request: NextRequest) {
   } catch (error) { return failure(error); }
 }
 
-export async function DELETE(request: NextRequest) {
+async function handleDELETE(request: NextRequest) {
   try {
     const { denied } = await authorizeAdminSession(request, true);
     if (denied) return denied;
@@ -92,5 +93,13 @@ export async function DELETE(request: NextRequest) {
   } catch (error) { return failure(error); }
 }
 
-export const POST = (request: NextRequest) => save(request, "POST");
-export const PUT = (request: NextRequest) => save(request, "PUT");
+const handlePOST = (request: NextRequest) => save(request, "POST");
+const handlePUT = (request: NextRequest) => save(request, "PUT");
+
+export const PATCH = withAdminActivity("promotions", handlePATCH);
+
+export const DELETE = withAdminActivity("promotions", handleDELETE);
+
+export const POST = withAdminActivity("promotions", handlePOST);
+
+export const PUT = withAdminActivity("promotions", handlePUT);

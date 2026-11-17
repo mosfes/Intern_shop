@@ -49,6 +49,7 @@ export interface Product {
   brand: string;
   category: CategorySlug;
   price: number;
+  flashSale?: import("./flash-sale").ProductFlashSale;
   originalPrice: number;
   /** Percentage discount, derived from price / originalPrice */
   discount: number;
@@ -80,7 +81,7 @@ export interface OrderLine {
   quantity: number;
 }
 
-export type OrderStatus = "processing" | "shipped" | "delivered";
+export type OrderStatus = "processing" | "shipped" | "delivered" | "cancelled";
 
 export interface Order {
   id: string;
@@ -96,6 +97,12 @@ export interface Order {
   shippingMethod: string;
   paymentMethod: string;
   address: string;
+  /** Set by an admin when the parcel is handed to the carrier. */
+  trackingNumber?: string;
+  /** When an admin last changed `status`. */
+  statusUpdatedAt?: string;
+  /** Internal note for admins; removed before the order is sent to the customer. */
+  adminNote?: string;
 }
 
 export interface DemoUser {

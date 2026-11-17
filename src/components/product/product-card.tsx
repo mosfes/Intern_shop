@@ -3,9 +3,10 @@
 import { Button, Card, Chip, Tooltip } from "@heroui/react";
 import Link from "next/link";
 import { EyeIcon } from "@/components/icons";
+import { usePricedProduct } from "@/components/product/use-priced-product";
 import type { Product } from "@/lib/types";
 import { useQuickView } from "./quick-view";
-import { AddToCartButton, DiscountChip, Price, ProductImage, Rating, StockChip, WishlistButton } from "./product-bits";
+import { AddToCartButton, DiscountChip, Price, ProductImage, StockChip, WishlistButton } from "./product-bits";
 
 interface ProductCardProps {
   product: Product;
@@ -13,7 +14,8 @@ interface ProductCardProps {
   priority?: boolean;
 }
 
-export function ProductCard({ product, layout = "grid", priority }: ProductCardProps) {
+export function ProductCard({ product: rawProduct, layout = "grid", priority }: ProductCardProps) {
+  const product = usePricedProduct(rawProduct);
   const quickView = useQuickView();
   const href = `/products/${product.slug}`;
   const isList = layout === "list";
@@ -68,7 +70,6 @@ export function ProductCard({ product, layout = "grid", priority }: ProductCardP
             {product.name}
           </Link>
           {isList && <p className="mt-1 line-clamp-2 hidden text-sm text-muted sm:block">{product.description}</p>}
-          <Rating value={product.rating} count={product.reviewCount} size={12} />
           <div className="mt-auto pt-2">
             <Price product={product} />
           </div>

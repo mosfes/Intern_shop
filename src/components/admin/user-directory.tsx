@@ -2,6 +2,7 @@
 
 import { Avatar, Label, ListBox, Modal, Select, Switch, buttonVariants } from "@heroui/react";
 import { UserEditor } from "./user-editor";
+import { CustomerShoppingDialog } from "./customer-shopping";
 import { CredentialResultDialog, generateAccountPassword, type CredentialResult } from "./credential-result";
 import { useState, type ReactNode } from "react";
 import { EditIcon, PlusIcon, SearchIcon, ShieldIcon, UserIcon } from "@/components/icons";
@@ -24,6 +25,7 @@ export function UserDirectory({ data, adminsOnly, pending, mutate, onCredentials
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [editing, setEditing] = useState<Row | null>(null);
+  const [shopping, setShopping] = useState<Row | null>(null);
   const [adding, setAdding] = useState(false);
   const [newAccountActive, setNewAccountActive] = useState(true);
   const [dialogError, setDialogError] = useState("");
@@ -60,7 +62,7 @@ export function UserDirectory({ data, adminsOnly, pending, mutate, onCredentials
             <td className="px-4 py-4 text-muted">{row.email}</td><td className="whitespace-nowrap px-4 py-4 text-muted">{row.phone || "—"}</td>
             <td className="px-4 py-4"><span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${row.disabled ? "bg-danger-soft text-danger" : !row.account ? "bg-warning-soft text-warning" : "bg-success-soft text-success"}`}>{row.disabled ? "ถูกระงับ" : !row.account ? "รอเข้าสู่ระบบ" : "ใช้งาน"}</span></td>
             <td className="whitespace-nowrap px-4 py-4 text-xs text-muted">{row.account ? new Date(row.account.lastLogin).toLocaleDateString("th-TH") : "—"}</td>
-            <td className="px-4 py-4 text-center"><button type="button" disabled={pending} aria-label={`แก้ไข ${row.email}`} onClick={() => { setEditing(row); setDialogError(""); }} className="inline-flex size-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-soft hover:text-accent focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"><EditIcon size={18} /></button></td>
+            <td className="px-4 py-4 text-center"><div className="flex items-center justify-center gap-2">{!adminsOnly && <button type="button" aria-label={`ดูตะกร้าและคำสั่งซื้อของ ${row.email}`} onClick={() => setShopping(row)} className="whitespace-nowrap rounded-lg bg-accent-soft px-3 py-2 text-xs font-medium text-accent hover:bg-accent-soft/70 focus-visible:outline-2 focus-visible:outline-accent">ตะกร้า / คำสั่งซื้อ</button>}<button type="button" disabled={pending} aria-label={`แก้ไข ${row.email}`} onClick={() => { setEditing(row); setDialogError(""); }} className="inline-flex size-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-soft hover:text-accent focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"><EditIcon size={18} /></button></div></td>
           </tr>)}</tbody>
         </table>
         {visible.length === 0 && <div className="px-6 py-14 text-center"><UserIcon size={30} className="mx-auto text-muted" /><p className="mt-3 font-medium">ไม่พบผู้ใช้</p><p className="mt-1 text-sm text-muted">{query || status !== "all" ? "ลองเปลี่ยนคำค้นหาหรือตัวกรอง" : "บัญชีจะแสดงที่นี่หลังเข้าสู่ระบบด้วย Google หรือเพิ่มอีเมลแอดมิน"}</p></div>}
@@ -68,6 +70,7 @@ export function UserDirectory({ data, adminsOnly, pending, mutate, onCredentials
       <div className="border-t border-border px-6 py-4 text-xs text-muted" role="status">แสดง {visible.length} จาก {sectionRows.length} บัญชี</div>
     </section>
     <UserEditor key={editing?.id ?? "closed"} row={editing} username={data.credentials?.find((entry) => entry.email === editing?.email)?.username ?? ""} pending={pending} mutate={mutate} onCredentialsReady={setCredentialResult} onClose={() => setEditing(null)} />
+    {shopping && <CustomerShoppingDialog key={shopping.id} customer={shopping} onClose={() => setShopping(null)} />}
     <Modal.Backdrop isOpen={adding} onOpenChange={(open) => { if (!open && !pending) setAdding(false); }}>
       <Modal.Container size="lg" placement="center" scroll="inside">
         <Modal.Dialog className="max-w-[512px] overflow-hidden rounded-2xl bg-overlay p-0 text-foreground shadow-2xl">

@@ -1,3 +1,4 @@
+import { withAdminActivity } from "@/lib/admin-activity";
 import type { NextRequest } from "next/server";
 import { adminJson, authorizeAdmin } from "@/lib/admin-auth";
 import { DiscountCodeError, expiryInstant, normalizeCode, toDiscountCode, validateDiscountInput } from "@/lib/discount-codes";
@@ -52,7 +53,7 @@ async function save(request: NextRequest, method: "POST" | "PUT") {
 }
 
 /** PATCH { code, active } turns a code on or off. */
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   try {
     const denied = await authorizeAdmin(request, true);
     if (denied) return denied;
@@ -63,7 +64,7 @@ export async function PATCH(request: NextRequest) {
   } catch (error) { return failure(error); }
 }
 
-export async function DELETE(request: NextRequest) {
+async function handleDELETE(request: NextRequest) {
   try {
     const denied = await authorizeAdmin(request, true);
     if (denied) return denied;
@@ -74,5 +75,13 @@ export async function DELETE(request: NextRequest) {
   } catch (error) { return failure(error); }
 }
 
-export const POST = (request: NextRequest) => save(request, "POST");
-export const PUT = (request: NextRequest) => save(request, "PUT");
+const handlePOST = (request: NextRequest) => save(request, "POST");
+const handlePUT = (request: NextRequest) => save(request, "PUT");
+
+export const PATCH = withAdminActivity("discount-codes", handlePATCH);
+
+export const DELETE = withAdminActivity("discount-codes", handleDELETE);
+
+export const POST = withAdminActivity("discount-codes", handlePOST);
+
+export const PUT = withAdminActivity("discount-codes", handlePUT);

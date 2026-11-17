@@ -10,7 +10,8 @@ import "./globals.css";
 const kanit = Kanit({
   variable: "--font-kanit",
   subsets: ["thai", "latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  // 700/800 aren't used: bold text (<strong>, <th>) resolves to the 600 face, so they'd only add font downloads.
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -27,7 +28,9 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const catalog = await getCatalogData();
+  // Only categories/brands/logos go to the browser here; product-heavy routes add <CatalogProducts>.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { products, ...catalog } = await getCatalogData();
   return (
     <html lang="th" data-scroll-behavior="smooth" suppressHydrationWarning className={`${kanit.variable} h-full`}>
       <head>

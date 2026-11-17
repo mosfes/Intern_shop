@@ -7,9 +7,12 @@ import { HeroSlider } from "@/components/home/hero";
 import { ArrowRightIcon, HeadsetIcon, RefreshIcon, ShieldIcon, TruckIcon } from "@/components/icons";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { Container, SectionHeader } from "@/components/ui/section";
+import { toCardProduct } from "@/lib/catalog";
+import { getHomepageFlashSale } from "@/lib/flash-sale-server";
 import { getCatalog } from "@/lib/catalog-server";
 import type { Promotion } from "@/lib/promotions";
 import { getHomepagePromotions } from "@/lib/promotions-server";
+import type { Product, ProductTag } from "@/lib/types";
 
 const benefits = [
   { icon: TruckIcon, title: "ส่งฟรีทั่วประเทศ", text: "เมื่อสั่งซื้อครบ ฿3,000 ขึ้นไป" },
@@ -18,8 +21,20 @@ const benefits = [
   { icon: HeadsetIcon, title: "ปรึกษาผู้เชี่ยวชาญ", text: "ช่วยจัดสเปกฟรี ทุกวัน 10:00–21:00" },
 ];
 
+const featuredTabs: { id: ProductTag; label: string }[] = [
+  { id: "best-seller", label: "ขายดี" },
+  { id: "new", label: "มาใหม่" },
+  { id: "recommended", label: "แนะนำ" },
+  { id: "special-offer", label: "ข้อเสนอพิเศษ" },
+];
+
 export default async function HomePage() {
-  const [{ categories, managedBrands, getProductsByTag }, promotions] = await Promise.all([getCatalog(), getHomepagePromotions()]);
+  const [{ categories, managedBrands, getProductsByTag }, promotions, flashSaleSettings] = await Promise.all([getCatalog(), getHomepagePromotions(), getHomepageFlashSale()]);
+  // Client cards get trimmed products; one object per product so a product shown in several tabs is serialized once.
+  const cardProducts = new Map<string, Product>();
+  const toCard = (p: Product) => cardProducts.get(p.id) ?? cardProducts.set(p.id, toCardProduct(p)).get(p.id)!;
+  const flashSaleProducts = getProductsByTag("flash-sale", Number.MAX_SAFE_INTEGER).map(toCard);
+  const featured = featuredTabs.map((t) => ({ ...t, products: getProductsByTag(t.id, 8).map(toCard) }));
   const homepageBrands = managedBrands.map((brand) => ({ brand }));
   return (
     <div className="space-y-16 pt-4 sm:space-y-20 sm:pt-6">
@@ -73,9 +88,7 @@ export default async function HomePage() {
       </Container>}
 
       {/* Flash sale */}
-      <Container>
-        <FlashSale products={getProductsByTag("flash-sale")} />
-      </Container>
+      <FlashSale products={flashSaleProducts} settings={flashSaleSettings} />
 
       {/* Featured */}
       <Container>
@@ -83,7 +96,7 @@ export default async function HomePage() {
           title="สินค้าแนะนำ"
           href="/products"
         />
-        <FeaturedTabs />
+        <FeaturedTabs tabs={featured} />
       </Container>
 
       {/* Promo banners */}

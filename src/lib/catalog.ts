@@ -10,6 +10,18 @@ export interface CatalogData {
 }
 
 /** "Western Digital" → "western-digital". Must match the admin app, which names the R2 logo file with it. */
+/** The catalogue without its product list — small enough to send to the browser on every page. */
+export type CatalogMeta = Omit<CatalogData, "products">;
+
+/**
+ * A product trimmed to what a grid card, quick view and the cart/wishlist buttons render.
+ * Drops the specification table, reviews, warranty and description (only the list-layout card shows it)
+ * so pages that hand server-loaded products to client cards don't ship the full record.
+ */
+export function toCardProduct(p: Product): Product {
+  return { ...p, images: p.images.slice(0, 1), description: "", shortSpecs: [], specifications: [], reviews: [], warranty: "" };
+}
+
 export function brandSlug(brand: string) {
   return brand
     .toLowerCase()

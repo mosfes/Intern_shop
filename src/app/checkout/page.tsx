@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CheckoutView } from "@/components/checkout/checkout-view";
 import { Container, PageHeader } from "@/components/ui/section";
+import { CatalogProducts } from "@/components/catalog-products";
 
 export const metadata: Metadata = { title: "ชำระเงิน" };
 
@@ -11,7 +12,7 @@ export default function CheckoutPage() {
   return (
     <Container className="pt-8">
       <PageHeader title="ชำระเงิน" description="กรอกข้อมูลการจัดส่งและเลือกวิธีชำระเงิน" />
-      <CheckoutView omisePublicKey={omisePublicKey} />
+      <CatalogProducts><CheckoutView omisePublicKey={omisePublicKey} /></CatalogProducts>
     </Container>
   );
 }

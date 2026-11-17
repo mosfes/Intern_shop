@@ -6,6 +6,7 @@ import { sessionUser } from "@/lib/shop-users";
 import { AdminPageSkeleton } from "@/components/admin/admin-skeleton";
 import { AdminPanel } from "@/components/admin/admin-panel";
 import { Suspense } from "react";
+import { CatalogProducts } from "@/components/catalog-products";
 
 async function AuthorizedAdmin() {
   // Token expiration must be checked at request time, outside prerendering.
@@ -14,7 +15,7 @@ async function AuthorizedAdmin() {
   if (!user) redirect("/login");
   if (user.mustChangePassword) redirect("/change-password");
   if (user.role !== "admin") redirect("/profile");
-  return <AdminPanel user={user} />;
+  return <CatalogProducts><AdminPanel user={user} /></CatalogProducts>;
 }
 
 export default function AdminPage() {

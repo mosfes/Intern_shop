@@ -4,6 +4,10 @@ import { test } from "node:test";
 import { createRequire } from "node:module";
 import { NextRequest } from "next/server";
 import { prisma } from "../src/lib/prisma";
+
+// Isolate audit persistence in route tests.
+Object.defineProperty(prisma.adminActivityLog, "create", { configurable: true, value: async () => ({ id: "test-log" }) });
+Object.defineProperty(prisma.adminActivityLog, "update", { configurable: true, value: async () => ({}) });
 import { GET, POST, PUT, DELETE } from "../src/app/api/admin/catalog/route";
 import { SESSION_COOKIE, signAuthToken } from "../src/lib/google-auth";
 import { buildCatalog, type CatalogData } from "../src/lib/catalog";
@@ -42,6 +46,11 @@ stub(prisma.category, "update", async ({ where, data }: { where: { id: string };
   const row = categories.find((row) => row.id === where.id)!; Object.assign(row, data); writeCount++; return row;
 });
 stub(prisma.category, "delete", async ({ where }: { where: { id: string } }) => { const [row] = categories.splice(categories.findIndex((row) => row.id === where.id), 1); writeCount++; return row; });
+// Category writes run in prisma.$transaction(write) — hand the stubbed client to the callback so nothing reaches the real database.
+stub(prisma, "$transaction", async (write: (tx: typeof prisma) => Promise<unknown>) => write(prisma));
+stub(prisma.categorySpecField, "deleteMany", async () => { writeCount++; return { count: 0 }; });
+stub(prisma.categorySpecField, "createMany", async ({ data }: { data: unknown[] }) => { writeCount++; return { count: data.length }; });
+stub(prisma.categorySpecField, "findMany", async () => []);
 const remoteReads: string[] = [];
 globalThis.fetch = async (url, init) => {
   assert.ok(!init?.method || init.method === "GET", "catalog management must not write to MockAPI");

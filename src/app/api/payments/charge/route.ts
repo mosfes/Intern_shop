@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { settleCharge } from "@/lib/payment-settlement";
 import { orderIdForCharge } from "@/lib/pending-payment";
 import type { Order } from "@/lib/types";
+import { withFlashSalePrice } from "@/lib/flash-sale";
 import { getCatalogData } from "@/lib/catalog-server";
 import { customerFromRequest } from "@/lib/customer-session";
 import { DiscountCodeError, normalizeCode } from "@/lib/discount-codes";
@@ -36,8 +37,10 @@ export async function POST(request: NextRequest) {
     if (method === "card" && !(typeof body.token === "string" && /^tokn_[A-Za-z0-9_]+$/.test(body.token))) return json({ error: "ข้อมูลบัตรไม่ถูกต้อง" }, 400);
 
     const code = normalizeCode(body.discountCode);
-    const { products } = await getCatalogData();
-    const price = priceOrder(body.lines, new Map(products.map((product) => [product.id, product])), body.shipping, code ? await findDiscountCode(code) : null);
+    const catalog = await getCatalogData();
+    const pricingTime = new Date();
+    const products = catalog.products.map((product) => withFlashSalePrice(product, pricingTime.getTime()));
+    const price = priceOrder(body.lines, new Map(products.map((product) => [product.id, product])), body.shipping, code ? await findDiscountCode(code) : null, pricingTime);
     const address = validateAddress(body.address);
     const checkoutId = randomUUID();
     const order: Order = {

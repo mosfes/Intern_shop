@@ -1,6 +1,6 @@
 Source: https://github.com/kongvut/thai-province-data
 Derived from api/latest/{province,district,sub_district}.json
-Retrieved: 2026-11-16; only districts with postal codes retained.
+Retrieved: 2026-11-17; districts and subdistricts with postal codes retained.
 
 MIT License
 

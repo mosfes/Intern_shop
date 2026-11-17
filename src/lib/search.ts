@@ -1,6 +1,9 @@
 import { matchesSpecs, type SpecSelection } from "./spec-filters";
 import type { Category, CategorySlug, Product } from "./types";
 
+/** One row of the header search dropdown (GET /api/search/suggestions). */
+export type SearchSuggestion = { id: string; slug: string; name: string; brand: string; price: number; image: string };
+
 function haystack(p: Product, category: Category | undefined) {
   return [p.name, p.brand, category?.name, category?.nameTh, p.category, ...p.shortSpecs].join(" ").toLowerCase();
 }

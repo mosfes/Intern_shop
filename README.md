@@ -52,6 +52,7 @@ npm run db:generate
 npm run db:setup-products
 npm run db:setup-image-uploads
 npm run db:setup-promotions
+npm run db:setup-flash-sale
 npm run db:import-catalog-metadata
 npm run dev
 ```
@@ -154,6 +155,7 @@ npm run db:push
 | `npm run db:import-catalog-metadata` | นำเข้าเฉพาะชื่อแบรนด์และรายละเอียดหมวดหมู่มาใช้ใน TiDB โดยไม่ย้ายสินค้า |
 | `npm run db:setup-image-uploads` | สร้างตารางติดตามไฟล์อัปโหลดและคิวล้างรูป |
 | `npm run db:setup-promotions` | สร้างตารางโปรโมชันหน้าแรก (สไลด์ การ์ด แบนเนอร์) และใส่ข้อมูลเริ่มต้น |
+| `npm run db:setup-flash-sale` | สร้างตารางเวลาแฟลชเซลและราคาพิเศษแยกจากราคาสินค้า (เวลาประเทศไทย) |
 | `npm run images:cleanup` | ล้างรูปหมดอายุที่ตรวจแล้วว่าไม่มีการใช้งาน และลองลบคิวที่ค้าง |
 | `npm run db:studio` | เปิด Prisma Studio |
 | `npm run db:migrate` | สร้าง migration สำหรับฐานข้อมูลที่รองรับ shadow database |
@@ -178,3 +180,14 @@ public/           โลโก้แบรนด์ รูปสินค้า 
 ไฟล์ `.env`, Prisma Client ที่ generate แล้ว, build output, JSON exports และภาพตรวจงานใน `output/` ถูกยกเว้นจาก Git ส่วน `.env.example` เป็นตัวอย่างการตั้งค่าที่ไม่มี credentials จริง
 
 หลังอัปเดตฟีเจอร์บังคับเปลี่ยนรหัสผ่าน ให้รัน `npm run db:setup-accounts` เพื่อเพิ่มคอลัมน์ `mustChangePassword` ในฐานข้อมูลเดิม แล้วรัน `npm run db:generate` และเริ่มเซิร์ฟเวอร์ใหม่ บัญชีที่สร้างหรือตั้งรหัสผ่านใหม่จากหน้าแอดมินจะต้องเปลี่ยนรหัสผ่านในการล็อกอินด้วยรหัสผ่านครั้งถัดไป ก่อนเข้าหน้าแอดมินได้
+
+### Admin activity logs
+
+Run `npm run db:setup-admin-logs` before using `/admin?section=logs`.
+Logs capture actor, timestamp, resource, action, target identifier and HTTP status for product, brand, category, promotion, discount code and user mutations. Request bodies and passwords are excluded.
+An attempt is saved before executing the handler; if this fails, the request returns 503 without changing data. Status 0 means the result is unconfirmed (process interrupted or status update failed), and does not establish success or failure.
+Successful admin sign-ins (password and Google) and explicit sign-outs are also logged before issuing or clearing the session cookie. Customer authentication, failed sign-ins, automatic session expiry, image uploads and historical activity are outside this log. If audit persistence fails, authentication returns an error so the user can retry.
+
+Admin logs also capture IP, User-Agent and approximate country/region/city when supplied by a trusted hosting proxy. Re-run `npm run db:setup-admin-logs` to add nullable columns to existing installations; old entries remain intact with unknown context. Restart the dev server after regenerating Prisma.
+Vercel is detected through `VERCEL=1`. For Cloudflare, set `ADMIN_LOG_PROXY=cloudflare`, restrict direct access to the origin, and enable its Add visitor location headers transform for city/region. A custom protected reverse proxy can use `ADMIN_LOG_PROXY=proxy` and must overwrite `X-Real-IP`; location remains unknown in this mode. `ADMIN_LOG_PROXY=none` disables proxy metadata. Local development without a trusted proxy shows unknown IP/location. User-Agent descriptions are client-reported, and IP location is approximate (VPN/mobile networks can differ). No external geolocation service receives admin IPs.
+Header references: [Vercel](https://vercel.com/docs/headers/request-headers), [Cloudflare](https://developers.cloudflare.com/fundamentals/reference/http-headers/).

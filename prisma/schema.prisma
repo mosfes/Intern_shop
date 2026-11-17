@@ -229,6 +229,7 @@ model CustomerAddress {
   address   String   @db.VarChar(500)
   province  String   @db.VarChar(100)
   district  String   @db.VarChar(100)
+  subdistrict String @default("") @db.VarChar(100)
   postcode  String   @db.VarChar(10)
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -305,4 +306,42 @@ model CheckoutPayment {
   updatedAt DateTime @updatedAt
 
   @@index([userId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+// Independent snapshots preserve history after accounts or records are removed.
+model AdminActivityLog {
+  ipAddress     String? @db.VarChar(45)
+  userAgent     String? @db.VarChar(1000)
+  country       String? @db.VarChar(2)
+  region        String? @db.VarChar(120)
+  city          String? @db.VarChar(120)
+  contextSource String? @db.VarChar(20)
+  id         String   @id @default(cuid()) @db.VarChar(100)
+  actorEmail String   @db.VarChar(191)
+  actorName  String   @db.VarChar(255)
+  resource   String   @db.VarChar(40)
+  action     String   @db.VarChar(64)
+  target     String   @db.VarChar(255)
+  status     Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt, id])
+  @@index([resource, createdAt])
+}
+
+// One schedule for the homepage Flash Sale. Null dates keep the daily Bangkok-midnight mode.
+model FlashSaleSetting {
+  id        String   @id @db.VarChar(40)
+  enabled   Boolean  @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  updatedAt DateTime @updatedAt
+}
+
+// Product ids can refer to either TiDB or MockAPI, so there is no foreign key.
+model FlashSaleItem {
+  productId String   @id @db.VarChar(100)
+  price     Decimal  @db.Decimal(12, 2)
+  updatedAt DateTime @updatedAt
 }

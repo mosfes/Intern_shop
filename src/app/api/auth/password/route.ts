@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authConfig, cookieOptions, SESSION_AGE, SESSION_COOKIE, signAuthToken } from "@/lib/google-auth";
 import { validUsername, verifyPassword } from "@/lib/admin-password";
+import { recordAdminAuth } from "@/lib/admin-activity";
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 const invalid = () => json({ error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือบัญชีไม่มีสิทธิ์แอดมิน" }, 401);
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
     });
     const token = await signAuthToken({ sub: user.googleId, email: user.email, name: user.name, authMethod: "password", remember: body.remember !== false, credentialVersion: credential.version }, "session", body.remember === false ? 60 * 60 * 8 : SESSION_AGE);
     await prisma.adminLoginLimit.deleteMany({ where: { key } });
+    await recordAdminAuth(user, "LOGIN_PASSWORD", request);
     const response = json({ ok: true, mustChangePassword: credential.mustChangePassword });
     response.cookies.set(SESSION_COOKIE, token, { ...cookieOptions, ...(body.remember === false ? {} : { maxAge: SESSION_AGE }) });
     return response;

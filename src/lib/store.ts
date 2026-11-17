@@ -1,5 +1,6 @@
 "use client";
 
+import { clearAddressBook, loadAddressBook } from "./address-book-cache";
 import { toast } from "@heroui/react";
 import { useSyncExternalStore } from "react";
 import type { CartLine, DemoUser, Order, Product } from "./types";
@@ -60,7 +61,9 @@ function load() {
 function setState(updater: (s: StoreState) => StoreState, fromServer = false) {
   load();
   const previousCart = state.cart;
+  const previousAccount = state.user?.googleId;
   state = updater(state);
+  if (previousAccount !== state.user?.googleId) clearAddressBook();
   // A local cart edit on a synced account must be saved to the server.
   if (!fromServer && state.cart !== previousCart && state.user?.googleId && state.cartOwner === state.user.googleId) {
     state = { ...state, cartDirty: true };
@@ -78,8 +81,10 @@ function subscribe(listener: () => void) {
   listeners.add(listener);
   const onStorage = (e: StorageEvent) => {
     if (e.key === STORAGE_KEY) {
+      const previousAccount = state.user?.googleId;
       loaded = false;
       load();
+      if (previousAccount !== state.user?.googleId) clearAddressBook();
       listeners.forEach((l) => l());
     }
   };
@@ -315,6 +320,7 @@ export const storeActions = {
       // Session ended (e.g. expired): what's left here becomes a guest cart that merges on the next login.
       return s.user?.googleId ? { ...s, user: null, orders: [], cartOwner: null, cartDirty: false } : s;
     });
+    if (user?.googleId && user.role !== "admin") void loadAddressBook(user.googleId);
     void storeActions.refreshOrders().then(() => pullCart());
   },
   /** Paid orders are stored on the server, including payments completed with the browser closed. */

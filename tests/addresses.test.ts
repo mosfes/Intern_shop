@@ -9,6 +9,7 @@ const valid = {
   address: " 99/1 ถนนสุขุมวิท ",
   province: "กรุงเทพมหานคร",
   district: "บางรัก",
+  subdistrict: "สีลม",
   postcode: "10500",
 };
 
@@ -27,6 +28,8 @@ test("bad addresses name the failing field", () => {
   assert.equal(field({ address: "x".repeat(501) }), "address");
   assert.equal(field({ phone: "abc" }), "phone");
   assert.equal(field({ district: "ไม่มีอำเภอนี้" }), "district");
+  assert.equal(field({ subdistrict: "" }), "subdistrict");
+  assert.equal(field({ subdistrict: "พระบรมมหาราชวัง" }), "subdistrict");
   assert.equal(field({ postcode: "99999" }), "postcode");
   assert.equal(field({ province: "ไม่มีจังหวัดนี้" }), "district");
   assert.equal(field({ label: 5 }), "label");
@@ -34,8 +37,18 @@ test("bad addresses name the failing field", () => {
 });
 
 test("addresses print on one line and the default sorts first", () => {
-  assert.equal(formatAddressLine(validate()), "99/1 ถนนสุขุมวิท บางรัก กรุงเทพมหานคร 10500");
+  assert.equal(formatAddressLine(validate()), "99/1 ถนนสุขุมวิท สีลม บางรัก กรุงเทพมหานคร 10500");
   assert.deepEqual(sortAddresses([{ id: "a", isDefault: false }, { id: "b", isDefault: true }]).map((a) => a.id), ["b", "a"]);
 });
 
 function validate() { return validateAddress(valid); }
+
+test("postcode must match the selected subdistrict, even within one district", () => {
+  const address = { ...valid, district: "บึงกุ่ม", subdistrict: "นวลจันทร์", postcode: "10230" };
+  assert.equal(validateAddress(address).postcode, "10230");
+  assert.throws(() => validateAddress({ ...address, postcode: "10240" }), (error) => error instanceof AddressError && error.message === "postcode");
+});
+
+test("legacy saved addresses still display without an empty locality", () => {
+  assert.equal(formatAddressLine({ ...validate(), subdistrict: "" }), "99/1 ถนนสุขุมวิท บางรัก กรุงเทพมหานคร 10500");
+});

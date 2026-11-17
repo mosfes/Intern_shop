@@ -2,24 +2,28 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { BoltIcon, ChevronRightIcon, PackageIcon, ShieldIcon, TagIcon, UserIcon } from "@/components/icons";
+import { BoltIcon, ChevronRightIcon, PackageIcon, ShieldIcon, TagIcon, TruckIcon, UserIcon } from "@/components/icons";
 import { AdminShell, type AdminIdentity, type AdminSection } from "./admin-shell";
 import { storeActions } from "@/lib/store";
 import { useFeedback } from "@/components/feedback-provider";
 import { Avatar, Chip } from "@heroui/react";
 
+import { ActivityDirectory } from "./activity-directory";
+import { OrderDirectory } from "./order-directory";
 import { ProductDirectory } from "./product-directory";
 import { CatalogDirectory } from "./catalog-directory";
+import { FlashSaleDirectory } from "./flash-sale-directory";
 import { PromotionDirectory } from "./promotion-directory";
 import { DiscountCodeDirectory } from "./discount-code-directory";
 import { AdminContentSkeleton } from "./admin-skeleton";
+import { SalesOverview } from "./sales-overview";
 import { AdminPageHeader, UserDirectory, type Directory } from "./user-directory";
 
 export function AdminPanel({ user }: { user: AdminIdentity }) {
   const [data, setData] = useState<Directory | null>(null);
   const searchParams = useSearchParams();
   const section = searchParams.get("section");
-  const tab: AdminSection = section === "customer" || section === "admin" || section === "products" || section === "categories" || section === "brands" || section === "promotions" || section === "discounts" ? section : "overview";
+  const tab: AdminSection = section === "logs" || section === "orders" || section === "customer" || section === "admin" || section === "products" || section === "categories" || section === "brands" || section === "flash-sale" || section === "promotions" || section === "discounts" ? section : "overview";
   const [error, setError] = useState("");
   const showFeedback = useFeedback();
   const [pending, setPending] = useState(false);
@@ -39,7 +43,7 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
     if (!response.ok) throw new Error(result.error);
     setData(result);
   }, []);
-  useEffect(() => { if (tab === "products" || tab === "categories" || tab === "brands" || tab === "promotions" || tab === "discounts") return; const timer = window.setTimeout(() => { void refresh().catch(() => setError("โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง")); }, 0); return () => window.clearTimeout(timer); }, [refresh, tab]);
+  useEffect(() => { if (tab === "logs" || tab === "orders" || tab === "products" || tab === "categories" || tab === "brands" || tab === "flash-sale" || tab === "promotions" || tab === "discounts") return; const timer = window.setTimeout(() => { void refresh().catch(() => setError("โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง")); }, 0); return () => window.clearTimeout(timer); }, [refresh, tab]);
 
   async function mutate(body: Record<string, unknown>) {
     setPending(true); setError("");
@@ -72,7 +76,10 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "โหลดข้อมูลไม่สำเร็จ"); }
   }
 
+  if (tab === "logs") return <AdminShell section={tab} onNavigate={navigate} user={user}><ActivityDirectory /></AdminShell>;
+  if (tab === "orders") return <AdminShell section={tab} onNavigate={navigate} user={user}><OrderDirectory /></AdminShell>;
   if (tab === "products") return <AdminShell section={tab} onNavigate={navigate} user={user}><ProductDirectory /></AdminShell>;
+  if (tab === "flash-sale") return <AdminShell section={tab} onNavigate={navigate} user={user}><FlashSaleDirectory /></AdminShell>;
   if (tab === "promotions") return <AdminShell section={tab} onNavigate={navigate} user={user}><PromotionDirectory /></AdminShell>;
   if (tab === "discounts") return <AdminShell section={tab} onNavigate={navigate} user={user}><DiscountCodeDirectory /></AdminShell>;
   if (tab === "categories" || tab === "brands") return <AdminShell section={tab} onNavigate={navigate} user={user}><CatalogDirectory key={tab} kind={tab === "categories" ? "category" : "brand"} /></AdminShell>;
@@ -80,7 +87,7 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
   const customers = data?.users.filter((user) => user.role === "customer") ?? [];
   return (
     <AdminShell section={tab} onNavigate={navigate} user={user}>
-      {tab === "overview" && <AdminPageHeader title="ภาพรวมระบบ" description="ดูภาพรวมบัญชีและเข้าถึงส่วนจัดการของร้าน" />}
+      {tab === "overview" && <AdminPageHeader title="ภาพรวมระบบ" description="ยอดขาย คำสั่งซื้อ สินค้า และบัญชีของร้านในที่เดียว" />}
       {error && <div role="alert" className="rounded-lg bg-danger-soft p-4 text-danger">{error} <button className="underline" onClick={() => refresh().then(() => setError("")).catch(() => setError("โหลดข้อมูลไม่สำเร็จ"))}>ลองใหม่</button></div>}
       {!data ? (error ? null : <AdminContentSkeleton section={tab} includeHeading={tab !== "overview"} />) : tab === "overview" ? (
         <div className="space-y-6">
@@ -89,6 +96,7 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
             <div className="min-w-0 flex-1"><p className="text-sm text-muted">ยินดีต้อนรับกลับ</p><h2 className="truncate text-xl font-semibold">{user.name}</h2><p className="truncate text-sm text-muted">{user.email}</p></div>
             <Chip size="sm" color="accent" variant="soft" className="hidden sm:inline-flex">แอดมิน</Chip>
           </section>
+          <SalesOverview onNavigate={navigate} />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {([
               { title: "ลูกค้าทั้งหมด", value: customers.length, detail: "ดูและแก้ไขข้อมูลลูกค้า", section: "customer", icon: UserIcon },
@@ -102,8 +110,10 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
               {data.users.length === 0 ? <p className="py-8 text-center text-sm text-muted">ยังไม่มีบัญชีที่เข้าสู่ระบบ</p> : <ul className="mt-4 divide-y divide-border">{[...data.users].sort((a, b) => new Date(b.lastLogin).getTime() - new Date(a.lastLogin).getTime()).slice(0, 5).map((account) => <li key={account.googleId} className="flex flex-wrap items-center gap-3 py-4"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-secondary text-muted"><UserIcon size={18} /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{account.name}</p><p className="truncate text-xs text-muted">{account.email}</p></div><div className="text-right"><p className="text-xs text-muted">{new Date(account.lastLogin).toLocaleDateString("th-TH")}</p><p className="mt-1 text-xs text-accent">{account.role === "admin" ? "แอดมิน" : "ลูกค้า"}</p></div></li>)}</ul>}
             </section>
             <section className="rounded-xl border border-border bg-surface p-5 sm:p-6"><h2 className="text-lg font-semibold">ทางลัดการจัดการ</h2><div className="mt-4 space-y-2">{([
+              { section: "orders", label: "จัดการคำสั่งซื้อ", description: "อัปเดตสถานะการจัดส่งและเลขพัสดุ", icon: TruckIcon },
               { section: "products", label: "จัดการสินค้า", description: "สินค้า ราคา และจำนวนคงเหลือ", icon: PackageIcon },
               { section: "promotions", label: "จัดการโปรโมชัน", description: "สไลด์ การ์ด และแบนเนอร์หน้าแรก", icon: BoltIcon },
+              { section: "flash-sale", label: "จัดการแฟลชเซล", description: "เลือกสินค้าและแก้ไขราคาแฟลชเซลหน้าแรก", icon: BoltIcon },
               { section: "discounts", label: "โค้ดส่วนลด", description: "สร้างโค้ดให้ลูกค้ากรอกตอนชำระเงิน", icon: TagIcon },
               { section: "customer", label: "จัดการลูกค้า", description: "ข้อมูลติดต่อและสถานะบัญชี", icon: UserIcon },
               { section: "admin", label: "จัดการแอดมิน", description: "เพิ่มหรือถอดสิทธิ์ด้วยอีเมล", icon: ShieldIcon },

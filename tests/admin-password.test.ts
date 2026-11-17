@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { before, beforeEach, test } from "node:test";
 import { NextRequest } from "next/server";
 import { prisma } from "../src/lib/prisma";
+
+// Isolate audit persistence in route tests.
+Object.defineProperty(prisma.adminActivityLog, "create", { configurable: true, value: async () => ({ id: "test-log" }) });
+Object.defineProperty(prisma.adminActivityLog, "update", { configurable: true, value: async () => ({}) });
 import { hashPassword, validPassword, validUsername, verifyPassword } from "../src/lib/admin-password";
 import { POST as changePassword } from "../src/app/api/auth/change-password/route";
 import { POST as login } from "../src/app/api/auth/password/route";
