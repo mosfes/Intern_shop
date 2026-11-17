@@ -16,8 +16,22 @@ const kanit = Kanit({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.EMAIL_SITE_URL || "https://edmpcshop-intern.mosapps.dev"),
   title: { default: "EDM PC Shop | ร้านอุปกรณ์คอมพิวเตอร์", template: "%s | EDM PC Shop" },
   description: "ช้อป CPU การ์ดจอ แรม SSD เมนบอร์ด จอมอนิเตอร์ และเกมมิ่งเกียร์ ของแท้ (เว็บไซต์สาธิต)",
+  openGraph: {
+    type: "website",
+    siteName: "EDM PC Shop",
+    title: "EDM PC Shop | ร้านอุปกรณ์คอมพิวเตอร์",
+    description: "ช้อป CPU การ์ดจอ แรม SSD เมนบอร์ด จอมอนิเตอร์ และเกมมิ่งเกียร์ ของแท้ (เว็บไซต์สาธิต)",
+    images: [{ url: "/brand/edm-brand-preview.png", width: 900, height: 600, alt: "EDM PC Shop" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "EDM PC Shop | ร้านอุปกรณ์คอมพิวเตอร์",
+    description: "ช้อป CPU การ์ดจอ แรม SSD เมนบอร์ด จอมอนิเตอร์ และเกมมิ่งเกียร์ ของแท้ (เว็บไซต์สาธิต)",
+    images: ["/brand/edm-brand-preview.png"],
+  },
 };
 
 export const viewport: Viewport = {

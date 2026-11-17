@@ -19,7 +19,26 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps<"/products/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const product = (await getCatalog()).productBySlug.get(slug);
-  return product ? { title: product.name, description: product.description } : { title: "ไม่พบสินค้า" };
+  if (!product) return { title: "ไม่พบสินค้า" };
+
+  const image = product.images[0] || "/brand/edm-brand-preview.png";
+  return {
+    title: product.name,
+    description: product.description,
+    openGraph: {
+      type: "website",
+      title: product.name,
+      description: product.description,
+      url: `/products/${encodeURIComponent(slug)}`,
+      images: [{ url: image, alt: product.name }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description: product.description,
+      images: [image],
+    },
+  };
 }
 
 export default function ProductPage({ params }: PageProps<"/products/[slug]">) {
