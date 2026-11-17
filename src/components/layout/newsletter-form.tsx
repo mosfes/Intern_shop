@@ -8,7 +8,7 @@ export function NewsletterForm() {
   const showFeedback = useFeedback();
   const [email, setEmail] = useState("");
   return (
-    <Form
+    <Form method="post"
       className="flex gap-2"
       onSubmit={(e) => {
         e.preventDefault();

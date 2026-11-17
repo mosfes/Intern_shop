@@ -135,7 +135,7 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
   const payable = subtotal - discount + ship;
 
   return (
-    <Form
+    <Form method="post"
       className="grid gap-8 lg:grid-cols-[1fr_380px]"
       onSubmit={async (e) => {
         e.preventDefault();

@@ -546,7 +546,7 @@ export function ProfileView() {
           <Card.Title>ข้อมูลส่วนตัว</Card.Title>
           <Card.Description>แก้ไขข้อมูลที่ใช้สำหรับการจัดส่ง (บันทึกในเบราว์เซอร์เท่านั้น)</Card.Description>
         </Card.Header>
-        <Form
+        <Form method="post"
           className="grid flex-1 gap-4 sm:grid-cols-2 sm:grid-rows-[auto_auto_1fr]"
           onSubmit={(e) => {
             e.preventDefault();

@@ -36,7 +36,7 @@ function AddressForm({
   const [error, setError] = useState("");
 
   return (
-    <Form
+    <Form method="post"
       className="grid gap-4 rounded-xl border border-border bg-surface-secondary/50 p-4 sm:grid-cols-2"
       onSubmit={async (e) => {
         e.preventDefault();

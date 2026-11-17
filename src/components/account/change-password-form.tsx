@@ -12,7 +12,7 @@ export function ChangePasswordForm() {
     <h1 className="text-2xl font-semibold">ตั้งรหัสผ่านใหม่</h1>
     <p className="mt-3 text-sm leading-relaxed text-muted">บัญชีของคุณเพิ่งถูกสร้างหรือรีเซ็ตรหัสผ่าน กรุณาเปลี่ยนรหัสผ่านชั่วคราวเป็นรหัสผ่านของคุณก่อนเริ่มใช้งาน</p>
     {error && <p role="alert" className="mt-5 text-sm text-danger">{error}</p>}
-    <Form className="mt-6 flex flex-col gap-5" onSubmit={async (event) => {
+    <Form method="post" className="mt-6 flex flex-col gap-5" onSubmit={async (event) => {
       event.preventDefault();
       const form = new FormData(event.currentTarget);
       setPending(true); setError("");

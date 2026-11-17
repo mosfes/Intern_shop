@@ -2,10 +2,10 @@
 
 import { useAdminFetch } from "./admin-data";
 
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Modal } from "@heroui/react";
-import { ArrowRightIcon, CheckIcon, ChevronDownIcon, PackageIcon, PrinterIcon, SearchIcon } from "@/components/icons";
+import { ArrowRightIcon, CheckIcon, PackageIcon, PrinterIcon, SearchIcon } from "@/components/icons";
 import { useFeedback } from "@/components/feedback-provider";
 import { formatBaht } from "@/lib/format";
 import { MAX_ADMIN_NOTE_LENGTH, MAX_TRACKING_LENGTH, ORDER_FULFILMENT_STEPS, ORDER_STATUSES, ORDER_TRANSITIONS, orderStatusLabel, type AdminOrderList, type AdminOrderRow } from "@/lib/admin-orders";
@@ -29,8 +29,6 @@ function StatusBadge({ status, paid = true }: { status: OrderStatus; paid?: bool
 
 export function OrderDirectory({ cache }: { cache: Map<string, AdminOrderList> }) {
   const adminFetch = useAdminFetch("orders");
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [status, setStatus] = useState<OrderStatus | "all" | "unpaid">("all");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
@@ -74,7 +72,7 @@ export function OrderDirectory({ cache }: { cache: Map<string, AdminOrderList> }
         <div role="group" aria-label="กรองตามสถานะ" className="flex min-w-max gap-5">
           {(["all", ...ORDER_STATUSES, "unpaid"] as const).map((value) => {
             const active = status === value;
-            return <button key={value} type="button" disabled={savingId !== null} aria-pressed={active} onClick={() => { setStatus(value); setPage(1); setExpandedId(null); }}
+            return <button key={value} type="button" aria-pressed={active} onClick={() => { setStatus(value); setPage(1); }}
               className={`flex items-center gap-2 border-b-2 py-3.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-accent ${active ? "border-accent text-accent" : "border-transparent text-muted hover:text-foreground"}`}>
               {value === "all" ? "ทั้งหมด" : value === "unpaid" ? "รอชำระเงิน" : orderStatusLabel[value]}
               {result && <span className={`min-w-6 rounded-md px-1.5 py-0.5 text-center text-xs tabular-nums ${active ? "bg-accent-soft text-accent" : "bg-surface-secondary text-muted"}`}>{result.counts[value]}</span>}
@@ -82,15 +80,15 @@ export function OrderDirectory({ cache }: { cache: Map<string, AdminOrderList> }
           })}
         </div>
       </div>
-      <form className="flex flex-wrap items-center gap-3 p-4 sm:px-5" role="search" onSubmit={(event) => { event.preventDefault(); if (savingId) return; setSearch(query.trim()); setPage(1); setExpandedId(null); }}>
+      <form className="flex flex-wrap items-center gap-3 p-4 sm:px-5" role="search" onSubmit={(event) => { event.preventDefault(); setSearch(query.trim()); setPage(1); }}>
         <label className="relative min-w-60 flex-1">
           <span className="sr-only">ค้นหาคำสั่งซื้อ</span>
           <SearchIcon size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input value={query} maxLength={100} onChange={(event) => setQuery(event.target.value)} placeholder="เลขคำสั่งซื้อ, รหัสชำระเงิน, ชื่อ, อีเมล หรือเบอร์โทรลูกค้า" className={`${inputClass} pl-9`} />
         </label>
-        <button type="submit" disabled={savingId !== null} className={actionClass}>ค้นหา</button>
-        {search && <button type="button" disabled={savingId !== null} className={actionClass} onClick={() => { setQuery(""); setSearch(""); setPage(1); setExpandedId(null); }}>ล้าง</button>}
-        <button type="button" disabled={savingId !== null} className={actionClass} onClick={reload}>รีเฟรช</button>
+        <button type="submit" className={actionClass}>ค้นหา</button>
+        {search && <button type="button" className={actionClass} onClick={() => { setQuery(""); setSearch(""); setPage(1); }}>ล้าง</button>}
+        <button type="button" className={actionClass} onClick={reload}>รีเฟรช</button>
       </form>
 
       {loading && result && <p role="status" className="px-5 pb-3 text-xs text-muted">กำลังอัปเดตคำสั่งซื้อ…</p>}
@@ -103,30 +101,23 @@ export function OrderDirectory({ cache }: { cache: Map<string, AdminOrderList> }
               <thead><tr className="border-y border-border bg-surface-secondary/50 text-xs text-muted">{["คำสั่งซื้อ", "ลูกค้า", "สินค้า", "การจัดส่ง", "ยอดชำระ", "สถานะ", "จัดการ", "เอกสาร"].map((label) => <th key={label} className="whitespace-nowrap px-4 py-3 font-medium first:pl-5">{label}</th>)}</tr></thead>
               <tbody>{result.orders.map((row) => {
                 const items = row.order.lines.reduce((sum, line) => sum + line.quantity, 0);
-                const expanded = expandedId === row.id;
-                return <Fragment key={row.id}><tr className={`cursor-pointer border-b border-border align-top transition-colors hover:bg-surface-secondary/50 ${expanded ? "bg-accent-soft/30" : ""}`} onClick={() => { if (!savingId) setSelected(row); }}>
-                  <td className="whitespace-nowrap px-4 py-3 pl-5"><button type="button" disabled={savingId !== null} className="font-mono font-semibold hover:text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent" onClick={(event) => { event.stopPropagation(); setSelected(row); }}>#{row.order.id}</button><p className="mt-1 text-xs text-muted">{date(row.createdAt)}</p></td>
+                return <tr key={row.id} className="cursor-pointer border-b border-border align-top transition-colors hover:bg-surface-secondary/50" onClick={() => setSelected(row)}>
+                  <td className="whitespace-nowrap px-4 py-3 pl-5"><button type="button" className="font-mono font-semibold hover:text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent" onClick={(event) => { event.stopPropagation(); setSelected(row); }}>#{row.order.id}</button><p className="mt-1 text-xs text-muted">{date(row.createdAt)}</p></td>
                   <td className="max-w-56 px-4 py-3"><p className="truncate">{row.customer.name ?? "บัญชีถูกลบ"}</p><p className="truncate text-xs text-muted">{row.customer.email ?? row.customer.id}</p></td>
                   <td className="min-w-48 max-w-72 px-4 py-3"><p className="line-clamp-1">{row.order.lines[0]?.name ?? "—"}</p><p className="text-xs text-muted">{row.order.lines.length > 1 ? `และอีก ${row.order.lines.length - 1} รายการ · ` : ""}{items} ชิ้น</p></td>
                   <td className="whitespace-nowrap px-4 py-3"><p>{row.order.shippingMethod}</p>{row.order.trackingNumber && <p className="font-mono text-xs text-muted">{row.order.trackingNumber}</p>}</td>
                   <td className="whitespace-nowrap px-4 py-3 font-semibold tabular-nums">{formatBaht(row.amount)}</td>
                   <td className="px-4 py-3"><StatusBadge status={row.order.status} paid={row.paid} />{row.order.statusUpdatedAt && row.paid && <p className="mt-1 whitespace-nowrap text-xs text-muted">{date(row.order.statusUpdatedAt)}</p>}</td>
-                  <td className="px-4 py-3"><button type="button" disabled={loading || savingId !== null} aria-expanded={expanded} aria-controls={`order-management-${row.id}`} aria-label={`จัดการสถานะคำสั่งซื้อ #${row.order.id}`} onClick={(event) => { event.stopPropagation(); setExpandedId(expanded ? null : row.id); }} className={`${actionClass} inline-flex items-center gap-2 whitespace-nowrap ${expanded ? "border-accent bg-accent-soft text-accent" : ""}`}>จัดการสถานะ<ChevronDownIcon size={14} className={`transition-transform ${expanded ? "rotate-180" : ""}`} /></button></td>
+                  <td className="px-4 py-3"><button type="button" disabled={loading} aria-label={`จัดการสถานะคำสั่งซื้อ #${row.order.id}`} onClick={(event) => { event.stopPropagation(); setSelected(row); }} className={`${actionClass} whitespace-nowrap`}>จัดการสถานะ</button></td>
                   <td className="px-4 py-3"><a href={`/orders/${encodeURIComponent(row.order.id)}/document`} target="_blank" rel="noopener" onClick={(event) => event.stopPropagation()}
                     className={`${actionClass} inline-flex items-center gap-1.5 whitespace-nowrap`}><PrinterIcon size={15} />ใบสั่งซื้อ</a></td>
-                </tr>
-                  {expanded && <tr id={`order-management-${row.id}`} className="border-b border-border bg-surface-secondary/40"><td colSpan={8} className="p-4 sm:p-5">
-                    <div className="sticky left-4 max-w-[calc(100vw-5.25rem)] rounded-xl border border-border bg-background p-4 shadow-sm sm:p-5 lg:static lg:max-w-none">
-                      <OrderUpdateForm key={`${row.id}-${row.updatedAt}`} row={row} inline onClose={() => setExpandedId(null)} onSavingChange={(saving) => setSavingId(saving ? row.id : null)} onSaved={() => { cache.clear(); setExpandedId(null); reload(); }} />
-                    </div>
-                  </td></tr>}
-                </Fragment>;
+                </tr>;
               })}</tbody>
             </table>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm sm:px-5">
             <span className="text-muted">หน้า {result.page} / {pages} · {result.total.toLocaleString("th-TH")} รายการ</span>
-            <div className="flex gap-2"><button type="button" className={actionClass} disabled={page <= 1 || savingId !== null} onClick={() => { setPage(page - 1); setExpandedId(null); }}>ก่อนหน้า</button><button type="button" className={actionClass} disabled={page >= pages || savingId !== null} onClick={() => { setPage(page + 1); setExpandedId(null); }}>ถัดไป</button></div>
+            <div className="flex gap-2"><button type="button" className={actionClass} disabled={page <= 1} onClick={() => { setPage(page - 1); }}>ก่อนหน้า</button><button type="button" className={actionClass} disabled={page >= pages} onClick={() => { setPage(page + 1); }}>ถัดไป</button></div>
           </div>
         </>}
     </section>
@@ -170,9 +161,8 @@ function OrderDialog({ row, onClose, onSaved }: { row: AdminOrderRow; onClose: (
   </Modal.Backdrop>;
 }
 
-function OrderUpdateForm({ row, inline = false, onClose, onSaved, onSavingChange }: {
+function OrderUpdateForm({ row, onClose, onSaved, onSavingChange }: {
   row: AdminOrderRow;
-  inline?: boolean;
   onClose: () => void;
   onSaved: () => void;
   onSavingChange: (saving: boolean) => void;
@@ -213,7 +203,7 @@ function OrderUpdateForm({ row, inline = false, onClose, onSaved, onSavingChange
     </div>
   </div>;
 
-  const stepper = <ol aria-label="ขั้นตอนการจัดส่ง" className={`flex items-start ${inline ? "max-w-xl" : ""}`}>
+  const stepper = <ol aria-label="ขั้นตอนการจัดส่ง" className="flex items-start">
     {ORDER_FULFILMENT_STEPS.map((value, index) => {
       const done = index < currentStep || order.status === "delivered";
       const current = index === currentStep && order.status !== "delivered";
@@ -231,30 +221,31 @@ function OrderUpdateForm({ row, inline = false, onClose, onSaved, onSavingChange
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <h3 className="text-base font-semibold">จัดการสถานะ <span className="font-mono">#{order.id}</span></h3>
       <StatusBadge status={order.status} />
-      {inline && <span className="text-xs text-muted sm:ml-auto">{order.statusUpdatedAt ? `เปลี่ยนสถานะล่าสุด ${date(order.statusUpdatedAt)}` : `สั่งซื้อ ${date(row.createdAt)}`}</span>}
     </div>
     {!locked && <div className="space-y-3 rounded-xl bg-surface-secondary/70 px-4 py-4">
       {stepper}
-      <p className={`text-xs text-muted ${inline ? "" : "text-center"}`}>{nextStatus ? "กด “ถัดไป” เพื่อบันทึกและเลื่อนไปขั้นต่อไป (ย้อนสถานะกลับไม่ได้)" : "จัดส่งสำเร็จแล้ว ไม่สามารถเปลี่ยนสถานะได้"}</p>
+      <p className="text-center text-xs text-muted">{nextStatus ? "กด “ถัดไป” เพื่อบันทึกและเลื่อนไปขั้นต่อไป (ย้อนสถานะกลับไม่ได้)" : "จัดส่งสำเร็จแล้ว ไม่สามารถเปลี่ยนสถานะได้"}</p>
     </div>}
-    <div className={inline ? "grid items-start gap-4 md:grid-cols-2" : "space-y-4"}>
+    <div className="space-y-4">
       <label className="block space-y-1.5"><span className="text-xs font-medium text-muted">เลขพัสดุ (ไม่บังคับ)</span>
         <input value={tracking} disabled={locked || saving} maxLength={MAX_TRACKING_LENGTH} pattern="[A-Za-z0-9 \-]*" title="ตัวอักษรอังกฤษ ตัวเลข ช่องว่าง และขีด ไม่เกิน 60 ตัว" onChange={(event) => setTracking(event.target.value)} placeholder="เช่น TH0123456789" className={`${inputClass} font-mono`} />
         <span className="block text-xs text-muted">ลูกค้าจะเห็นเลขนี้ในหน้าคำสั่งซื้อ</span>
       </label>
       <label className="block space-y-1.5"><span className="flex items-center justify-between gap-2 text-xs font-medium text-muted"><span>บันทึกภายใน (ลูกค้าไม่เห็น)</span><span className="font-normal tabular-nums">{note.length}/{MAX_ADMIN_NOTE_LENGTH}</span></span>
-        <textarea value={note} disabled={saving} maxLength={MAX_ADMIN_NOTE_LENGTH} rows={inline ? 3 : 4} onChange={(event) => setNote(event.target.value)} placeholder="เช่น ลูกค้าขอเลื่อนรับสินค้า" className={`${inputClass} h-auto min-h-[5.5rem] resize-y py-2`} />
+        <textarea value={note} disabled={saving} maxLength={MAX_ADMIN_NOTE_LENGTH} rows={4} onChange={(event) => setNote(event.target.value)} placeholder="เช่น ลูกค้าขอเลื่อนรับสินค้า" className={`${inputClass} h-auto min-h-[5.5rem] resize-y py-2`} />
       </label>
     </div>
     {locked && <p className="rounded-lg bg-surface-secondary p-3 text-xs text-muted">คำสั่งซื้อที่ยกเลิกแล้วเปลี่ยนสถานะไม่ได้ แก้ได้เฉพาะบันทึกภายใน</p>}
     {error && <p role="alert" className="rounded-lg bg-danger-soft p-3 text-danger">{error}</p>}
-    <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
-      {canCancel && <button type="submit" value="cancelled" disabled={saving} className="rounded-lg px-3 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-50">ยกเลิกคำสั่งซื้อ</button>}
-      <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-        {!inline && <a href={`/orders/${encodeURIComponent(order.id)}/document`} target="_blank" rel="noopener" className={`${actionClass} inline-flex items-center gap-2`}><PrinterIcon size={16} />ใบสั่งซื้อ</a>}
-        <button type="button" disabled={saving} onClick={onClose} className={actionClass}>ปิด</button>
-        <button type="submit" value={order.status} disabled={!changed || saving} className={actionClass}>{saving ? "กำลังบันทึก…" : "บันทึกข้อมูล"}</button>
-        {nextStatus && <button type="submit" value={nextStatus} disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50">ถัดไป: {orderStatusLabel[nextStatus]}<ArrowRightIcon size={16} /></button>}
+    <div className="space-y-2 border-t border-border pt-4">
+      {nextStatus && <button type="submit" value={nextStatus} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50">ถัดไป: {orderStatusLabel[nextStatus]}<ArrowRightIcon size={16} /></button>}
+      <div className="grid grid-cols-2 gap-2">
+        <button type="submit" value={order.status} disabled={!changed || saving} className={`${actionClass} text-center`}>{saving ? "กำลังบันทึก…" : "บันทึกข้อมูล"}</button>
+        <a href={`/orders/${encodeURIComponent(order.id)}/document`} target="_blank" rel="noopener" className={`${actionClass} inline-flex items-center justify-center gap-2`}><PrinterIcon size={16} />ใบสั่งซื้อ</a>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        {canCancel ? <button type="submit" value="cancelled" disabled={saving} className="rounded-lg px-3 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-50">ยกเลิกคำสั่งซื้อ</button> : <span />}
+        <button type="button" disabled={saving} onClick={onClose} className="rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface-secondary disabled:opacity-50">ปิด</button>
       </div>
     </div>
   </form>;

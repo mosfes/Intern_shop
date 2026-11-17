@@ -114,7 +114,7 @@ export function LoginForm({ googleError, next, registered }: { googleError?: str
       <p className="mt-3 text-center text-xs text-muted">ลูกค้าเข้าสู่ระบบด้วยอีเมล Google ได้ทันที โดยไม่ต้องสมัครสมาชิก</p>
       <OrDivider>เข้าสู่ระบบด้วยอีเมล</OrDivider>
       {loginError && <p role="alert" className="mb-4 text-sm text-danger">{loginError}</p>}
-      <Form
+      <Form method="post"
         className="flex flex-col gap-4"
         onSubmit={async (e) => {
           e.preventDefault();
@@ -193,7 +193,7 @@ export function RegisterForm() {
       }
     >
       {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
-      {email ? <Form className="flex flex-col gap-4" onSubmit={async (e) => {
+      {email ? <Form method="post" className="flex flex-col gap-4" onSubmit={async (e) => {
         e.preventDefault(); setPending(true); setError("");
         try {
           const response = await fetch("/api/auth/verify-registration", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, code: String(new FormData(e.currentTarget).get("code")) }) });
@@ -205,7 +205,7 @@ export function RegisterForm() {
         <TextField name="code" isRequired autoComplete="one-time-code"><Label>รหัสยืนยัน OTP</Label><Input inputMode="numeric" maxLength={6} /><FieldError>กรุณากรอกรหัสยืนยัน</FieldError></TextField>
         <Button type="submit" size="lg" fullWidth isPending={pending}>ยืนยันและสมัครสมาชิก</Button>
         <button type="button" className="text-sm text-accent" onClick={() => { setEmail(""); setError(""); }}>กลับไปขอรหัสใหม่</button>
-      </Form> : <Form
+      </Form> : <Form method="post"
         className="flex flex-col gap-4"
         onSubmit={async (e) => {
           e.preventDefault(); const d = new FormData(e.currentTarget); setPending(true); setError("");
