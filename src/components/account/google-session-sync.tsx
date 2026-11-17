@@ -21,7 +21,7 @@ export function GoogleSessionSync() {
     // Pick up cart changes made on another device (and retry any unsaved ones) when the tab is shown again.
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        void storeActions.refreshOrders().then(() => storeActions.refreshCart());
+        void Promise.all([storeActions.refreshOrders(), storeActions.refreshCart()]);
       }
     };
     document.addEventListener("visibilitychange", onVisible);

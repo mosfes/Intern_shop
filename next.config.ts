@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  outputFileTracingIncludes: { "/*": ["./assets/fonts/*.ttf", "./public/brand/*.png", "./public/images/products/**/*"] },
   cacheComponents: true,
   partialPrefetching: true,
   images: {

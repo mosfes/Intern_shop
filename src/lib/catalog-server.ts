@@ -1,7 +1,9 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { buildCatalog, type CatalogData } from "./catalog";
+import { buildCatalog, type CatalogData, type CatalogMeta } from "./catalog";
 import type { Category, Product } from "./types";
 import { FLASH_SALE_TAG, getHomepageFlashSale, getStorefrontFlashSaleOffers } from "./flash-sale-server";
+import { prisma } from "./prisma";
+import { storedCategories } from "./catalog-metadata";
 import { getAdminProducts } from "./admin-products";
 
 /** Cache tag for the catalogue — call revalidateTag("catalog") after an admin edit. */
@@ -58,4 +60,16 @@ export async function getCatalogData(): Promise<CatalogData> {
 
 export async function getCatalog() {
   return buildCatalog(await getCatalogData());
+}
+
+/** Navigation and account pages need metadata, without products, reviews or external catalogue requests. */
+export async function getCatalogMeta(): Promise<CatalogMeta> {
+  "use cache";
+  cacheTag(CATALOG_TAG);
+  cacheLife("minutes");
+  const [categories, brandAssets] = await Promise.all([
+    prisma.category.findMany({ orderBy: { nameTh: "asc" }, select: { slug: true, name: true, nameTh: true, description: true, image: true } }),
+    prisma.brand.findMany({ orderBy: { name: "asc" }, select: { name: true, logoUrl: true } }),
+  ]);
+  return { categories: storedCategories(categories).filter((category) => category.slug && category.nameTh && category.image), brandAssets };
 }

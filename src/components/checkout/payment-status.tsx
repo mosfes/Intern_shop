@@ -5,17 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CartSkeleton } from "@/components/cart/cart-view";
+import { PrinterIcon } from "@/components/icons";
 import { Confirmation } from "@/components/checkout/checkout-view";
 import { CHECKOUT_LOGIN_HREF } from "@/lib/auth-redirect";
 import { formatBaht } from "@/lib/format";
-import { clearPendingPayment, loadPendingPayment, type PendingPayment } from "@/lib/pending-payment";
+import { clearPendingPayment, loadPendingPayment, orderIdForCharge, type PendingPayment } from "@/lib/pending-payment";
 import { storeActions, useHydrated, useStore } from "@/lib/store";
 import type { Order } from "@/lib/types";
 
 type View =
   | { kind: "loading" }
   | { kind: "none" }
-  | { kind: "pending"; total: number; qrUrl: string | null; authorizeUri: string | null; expiresAt: string | null }
+  | { kind: "pending"; orderId: string; total: number; qrUrl: string | null; authorizeUri: string | null; expiresAt: string | null }
   | { kind: "paid"; order: Order }
   | { kind: "failed"; message: string };
 
@@ -65,7 +66,7 @@ export function PaymentStatus() {
           window.clearInterval(timer);
           setView({ kind: "failed", message: result.error });
         } else {
-          setView({ kind: "pending", total: result.total, qrUrl: result.qrUrl, authorizeUri: result.authorizeUri, expiresAt: result.expiresAt });
+          setView({ kind: "pending", orderId: orderIdForCharge(pending.chargeId), total: result.total, qrUrl: result.qrUrl, authorizeUri: result.authorizeUri, expiresAt: result.expiresAt });
         }
       } catch { /* offline: try again next tick */ } finally { busy = false; }
     }
@@ -110,6 +111,8 @@ export function PaymentStatus() {
         {view.expiresAt && view.qrUrl && ` QR หมดอายุเวลา ${new Date(view.expiresAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })} น.`}
       </p>
       {!view.qrUrl && view.authorizeUri && <a href={view.authorizeUri} className={`${buttonVariants()} mt-5`}>ไปที่หน้าอนุมัติการชำระเงิน</a>}
+      <p className="mt-5"><a href={`/orders/${encodeURIComponent(view.orderId)}/document`} target="_blank" rel="noopener"
+        className={buttonVariants({ variant: "secondary" })}><PrinterIcon size={16} />ดูใบสั่งซื้อ (รอชำระเงิน)</a></p>
     </div>
   );
 }

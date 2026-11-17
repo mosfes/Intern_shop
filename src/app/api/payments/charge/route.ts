@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { AddressError, formatAddressLine, validateAddress } from "@/lib/addresses";
+import { AddressError, formatAddressLine, validateAddress, validateContact } from "@/lib/addresses";
 import { shippingOptions } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { settleCharge } from "@/lib/payment-settlement";
@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
     const pricingTime = new Date();
     const products = catalog.products.map((product) => withFlashSalePrice(product, pricingTime.getTime()));
     const price = priceOrder(body.lines, new Map(products.map((product) => [product.id, product])), body.shipping, code ? await findDiscountCode(code) : null, pricingTime);
-    const address = validateAddress(body.address);
+    const contact = validateContact(body.address);
+    const address = body.shipping === "pickup" ? null : validateAddress(body.address);
     const checkoutId = randomUUID();
     const order: Order = {
       id: checkoutId,
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       ...(price.discount > 0 ? { discountCode: code } : {}),
       shippingMethod: shippingOptions.find((option) => option.id === body.shipping)!.label,
       paymentMethod: paymentLabel(method),
-      address: `${address.fullName} · ${formatAddressLine(address)} · ${address.phone}`,
+      address: address ? `${contact.fullName} · ${formatAddressLine(address)} · ${contact.phone}` : `${contact.fullName} · ${contact.phone}`,
     };
     // Persist before the bank can take payment. The webhook can locate this snapshot
     // through metadata even if it arrives before this HTTP request finishes.
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     // A card that already succeeded can still carry an authorize_uri; only a pending charge needs the customer to go there.
     return json({ chargeId: charge.id, status: charge.status, authorizeUri: charge.status === "pending" ? charge.authorize_uri : null, total: price.total, discount: price.discount, shipping: price.shipping, order: settledOrder ?? { ...order, id: orderIdForCharge(charge.id) } }, 201);
   } catch (error) {
-    if (error instanceof AddressError) return json({ error: "กรุณาตรวจสอบข้อมูลที่อยู่จัดส่ง" }, 400);
+    if (error instanceof AddressError) return json({ error: "กรุณาตรวจสอบข้อมูลผู้รับและที่อยู่จัดส่ง" }, 400);
     if (error instanceof PaymentError || error instanceof DiscountCodeError || error instanceof OmiseError) return json({ error: error.message }, error.status);
     return json({ error: "เริ่มการชำระเงินไม่สำเร็จ กรุณาลองอีกครั้ง" }, 503);
   }

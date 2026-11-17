@@ -5,11 +5,11 @@ import { safeNextPath } from "@/lib/auth-redirect";
 
 export const metadata: Metadata = { title: "เข้าสู่ระบบ" };
 
-type LoginSearchParams = Promise<{ error?: string; next?: string }>;
+type LoginSearchParams = Promise<{ error?: string; next?: string; registered?: string }>;
 
 async function LoginContent({ searchParams }: { searchParams: LoginSearchParams }) {
-  const { error, next } = await searchParams;
-  return <LoginForm googleError={error} next={safeNextPath(next) ?? undefined} />;
+  const { error, next, registered } = await searchParams;
+  return <LoginForm googleError={error} next={safeNextPath(next) ?? undefined} registered={registered === "1"} />;
 }
 
 export default function Page({ searchParams }: { searchParams: LoginSearchParams }) {

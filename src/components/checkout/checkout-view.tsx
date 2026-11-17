@@ -23,7 +23,7 @@ import { CHECKOUT_LOGIN_HREF } from "@/lib/auth-redirect";
 import { CartSkeleton } from "@/components/cart/cart-view";
 import { OrderSummary } from "@/components/cart/order-summary";
 import { ShippingAddressFields } from "@/components/checkout/shipping-address-fields";
-import { BankIcon, CartIcon, CheckIcon, CreditCardIcon, QrIcon, ShieldIcon } from "@/components/icons";
+import { BankIcon, CartIcon, CheckIcon, CreditCardIcon, PrinterIcon, QrIcon, ShieldIcon } from "@/components/icons";
 import { useCatalog } from "@/components/catalog-provider";
 import { useAddressBook } from "@/lib/address-book";
 import { formatAddressLine, type SavedAddress } from "@/lib/addresses";
@@ -173,7 +173,7 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
           // amounts replace ours so the order always matches what was charged.
           const order: Order = result.order;
           savePendingPayment({ chargeId: result.chargeId, order });
-          if (activeId === "new" && saveForLater) {
+          if (shipping === "standard" && activeId === "new" && saveForLater) {
             // Best effort: a failure here is not shown as an error.
             const duplicate = (saved ?? []).some((a) => formatAddressLine(a) === formatAddressLine({ address: data.address, district: data.district, subdistrict: data.subdistrict, province: data.province, postcode: data.postcode }) && a.fullName === data.fullName);
             if (!duplicate) {
@@ -190,54 +190,7 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
       }}
     >
       <div className="min-w-0 space-y-5">
-        <Step n={1} title="ข้อมูลการจัดส่ง">
-          {saved === null && user.googleId && (
-            <div role="status" aria-label="กำลังโหลดที่อยู่ที่บันทึกไว้" className="mb-5 space-y-2">
-              <p className="text-sm text-muted">กำลังโหลดที่อยู่ที่บันทึกไว้...</p>
-              <Skeleton className="h-24 rounded-xl" />
-            </div>
-          )}
-          {book.failed && <p role="alert" className="mb-4 text-sm text-danger">โหลดที่อยู่ที่บันทึกไว้ไม่สำเร็จ <Button type="button" size="sm" variant="ghost" onPress={() => { void book.reload(); }}>ลองอีกครั้ง</Button></p>}
-          {saved && saved.length > 0 && (
-            <SavedAddressPicker addresses={saved} value={activeId} onChange={setPickedId} />
-          )}
-          <fieldset disabled={saved === null && !!user.googleId} key={activeId ?? "loading"} className="grid min-w-0 gap-4 sm:grid-cols-2">
-            <TextField name="fullName" isRequired defaultValue={picked?.fullName ?? user?.name} autoComplete="name">
-              <Label>ชื่อ-นามสกุล</Label>
-              <Input placeholder="สมชาย ใจดี" />
-              <FieldError>กรุณากรอกชื่อผู้รับ</FieldError>
-            </TextField>
-            <TextField name="phone" type="tel" isRequired defaultValue={picked?.phone ?? user?.phone} autoComplete="tel" pattern="[0-9\- ]{9,12}">
-              <Label>เบอร์โทรศัพท์</Label>
-              <Input placeholder="08x-xxx-xxxx" />
-              <FieldError>กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง</FieldError>
-            </TextField>
-            <TextField name="email" type="email" isRequired defaultValue={user?.email} autoComplete="email" className="sm:col-span-2">
-              <Label>อีเมล</Label>
-              <Input placeholder="you@email.com" />
-              <Description>ใช้สำหรับส่งใบยืนยันคำสั่งซื้อ (เดโม)</Description>
-              <FieldError>กรุณากรอกอีเมลให้ถูกต้อง</FieldError>
-            </TextField>
-            <TextField name="address" isRequired defaultValue={picked?.address} className="sm:col-span-2" autoComplete="street-address">
-              <Label>ที่อยู่</Label>
-              <TextArea placeholder="บ้านเลขที่ อาคาร ถนน" rows={2} />
-              <FieldError>กรุณากรอกที่อยู่</FieldError>
-            </TextField>
-            <ShippingAddressFields defaults={picked ? { province: picked.province, district: picked.district, subdistrict: picked.subdistrict, postcode: picked.postcode } : undefined} />
-            {activeId === "new" && book.addresses !== null && !book.failed && (
-              <Checkbox isSelected={saveForLater} onChange={setSaveForLater} className="sm:col-span-2">
-                <Checkbox.Control>
-                  <Checkbox.Indicator />
-                </Checkbox.Control>
-                <Checkbox.Content>
-                  <Label>บันทึกที่อยู่นี้ไว้ใช้ในครั้งต่อไป</Label>
-                </Checkbox.Content>
-              </Checkbox>
-            )}
-          </fieldset>
-        </Step>
-
-        <Step n={2} title="วิธีการจัดส่ง">
+        <Step n={1} title="วิธีการจัดส่ง">
           <RadioGroup aria-label="วิธีการจัดส่ง" value={shipping} onChange={(v) => setShipping(v as ShippingId)} className="gap-3">
             {shippingOptions.map((o) => {
               const cost = shippingCost(o.id, subtotal);
@@ -259,6 +212,57 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
               );
             })}
           </RadioGroup>
+        </Step>
+
+        <Step n={2} title={shipping === "pickup" ? "ข้อมูลผู้รับสินค้า" : "ข้อมูลการจัดส่ง"}>
+          {shipping === "standard" && saved === null && user.googleId && (
+            <div role="status" aria-label="กำลังโหลดที่อยู่ที่บันทึกไว้" className="mb-5 space-y-2">
+              <p className="text-sm text-muted">กำลังโหลดที่อยู่ที่บันทึกไว้...</p>
+              <Skeleton className="h-24 rounded-xl" />
+            </div>
+          )}
+          {shipping === "standard" && book.failed && <p role="alert" className="mb-4 text-sm text-danger">โหลดที่อยู่ที่บันทึกไว้ไม่สำเร็จ <Button type="button" size="sm" variant="ghost" onPress={() => { void book.reload(); }}>ลองอีกครั้ง</Button></p>}
+          {shipping === "standard" && saved && saved.length > 0 && (
+            <SavedAddressPicker addresses={saved} value={activeId} onChange={setPickedId} />
+          )}
+          <fieldset disabled={shipping === "standard" && saved === null && !!user.googleId} key={shipping === "pickup" ? "pickup" : (activeId ?? "loading")} className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <TextField name="fullName" isRequired defaultValue={picked?.fullName ?? user?.name} autoComplete="name">
+              <Label>ชื่อ-นามสกุล</Label>
+              <Input placeholder="สมชาย ใจดี" />
+              <FieldError>กรุณากรอกชื่อผู้รับ</FieldError>
+            </TextField>
+            <TextField name="phone" type="tel" isRequired defaultValue={picked?.phone ?? user?.phone} autoComplete="tel" pattern="[0-9\- ]{9,12}">
+              <Label>เบอร์โทรศัพท์</Label>
+              <Input placeholder="08x-xxx-xxxx" />
+              <FieldError>กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง</FieldError>
+            </TextField>
+            <TextField name="email" type="email" isRequired defaultValue={user?.email} autoComplete="email" className="sm:col-span-2">
+              <Label>อีเมล</Label>
+              <Input placeholder="you@email.com" />
+              <Description>ใช้สำหรับส่งใบยืนยันคำสั่งซื้อ (เดโม)</Description>
+              <FieldError>กรุณากรอกอีเมลให้ถูกต้อง</FieldError>
+            </TextField>
+            {shipping === "standard" && (
+              <>
+                <TextField name="address" isRequired defaultValue={picked?.address} className="sm:col-span-2" autoComplete="street-address">
+                  <Label>ที่อยู่</Label>
+                  <TextArea placeholder="บ้านเลขที่ อาคาร ถนน" rows={2} />
+                  <FieldError>กรุณากรอกที่อยู่</FieldError>
+                </TextField>
+                <ShippingAddressFields defaults={picked ? { province: picked.province, district: picked.district, subdistrict: picked.subdistrict, postcode: picked.postcode } : undefined} />
+                {activeId === "new" && book.addresses !== null && !book.failed && (
+                  <Checkbox isSelected={saveForLater} onChange={setSaveForLater} className="sm:col-span-2">
+                    <Checkbox.Control>
+                      <Checkbox.Indicator />
+                    </Checkbox.Control>
+                    <Checkbox.Content>
+                      <Label>บันทึกที่อยู่นี้ไว้ใช้ในครั้งต่อไป</Label>
+                    </Checkbox.Content>
+                  </Checkbox>
+                )}
+              </>
+            )}
+          </fieldset>
         </Step>
 
         <Step n={3} title="วิธีการชำระเงิน">
@@ -330,7 +334,7 @@ export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
             onError={setCodeError}
           />
           {payError && <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">{payError}</p>}
-          <Button type="submit" size="lg" fullWidth isPending={submitting} isDisabled={!paymentsEnabled || (saved === null && !!user.googleId)}>
+          <Button type="submit" size="lg" fullWidth isPending={submitting} isDisabled={!paymentsEnabled || (shipping === "standard" && saved === null && !!user.googleId)}>
             {submitting ? "กำลังดำเนินการ..." : `ชำระเงิน · ${formatBaht(payable)}`}
           </Button>
           <p className="flex items-start gap-1.5 text-xs text-muted">
@@ -427,7 +431,7 @@ export function Confirmation({ order }: { order: Order }) {
             <dd>{order.paymentMethod}</dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="text-muted">ที่อยู่จัดส่ง</dt>
+            <dt className="text-muted">{order.shippingMethod === "รับที่หน้าร้าน" ? "ข้อมูลผู้รับสินค้า" : "ที่อยู่จัดส่ง"}</dt>
             <dd>{order.address}</dd>
           </div>
           <div className="flex items-baseline justify-between sm:col-span-2">
@@ -440,6 +444,9 @@ export function Confirmation({ order }: { order: Order }) {
         <Link href="/orders" className={buttonVariants({ size: "lg" })}>
           ดูคำสั่งซื้อของฉัน
         </Link>
+        <a href={`/orders/${encodeURIComponent(order.id)}/document`} target="_blank" rel="noopener" className={buttonVariants({ size: "lg", variant: "secondary" })}>
+          <PrinterIcon size={18} />ใบสั่งซื้อ (ชำระเงินแล้ว)
+        </a>
         <Link href="/products" className={buttonVariants({ size: "lg", variant: "secondary" })}>
           เลือกซื้อสินค้าต่อ
         </Link>

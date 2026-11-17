@@ -12,14 +12,13 @@ import {
   buttonVariants,
   toast,
 } from "@heroui/react";
-import { useFeedback } from "@/components/feedback-provider";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { EyeIcon, GoogleIcon } from "@/components/icons";
 import { rememberPostLoginPath } from "@/lib/auth-redirect";
-import { storeActions } from "@/lib/store";
+import { REGISTRATION_OPEN } from "@/lib/registration";
 import "./auth-showcase.css";
 
 function ShopShowcase() {
@@ -73,7 +72,7 @@ function OrDivider({ children }: { children: ReactNode }) {
   );
 }
 
-export function LoginForm({ googleError, next }: { googleError?: string; next?: string }) {
+export function LoginForm({ googleError, next, registered }: { googleError?: string; next?: string; registered?: boolean }) {
   const router = useRouter();
   // Google sign-in leaves the site, so keep the destination in this tab for /auth/complete.
   useEffect(() => rememberPostLoginPath(next ?? null), [next]);
@@ -86,17 +85,22 @@ export function LoginForm({ googleError, next }: { googleError?: string; next?: 
       title="เข้าสู่ระบบ"
       subtitle="ยินดีต้อนรับกลับสู่ EDM PC Shop"
       footer={
-        <>
-          ยังไม่มีบัญชี?{" "}
-          <Link href="/register" className="font-medium text-accent hover:underline">
-            สมัครสมาชิก
-          </Link>
-        </>
+        REGISTRATION_OPEN ? (
+          <>
+            ยังไม่มีบัญชี?{" "}
+            <Link href="/register" className="font-medium text-accent hover:underline">
+              สมัครสมาชิก
+            </Link>
+          </>
+        ) : (
+          "ขณะนี้ปิดรับสมัครสมาชิกชั่วคราว ลูกค้าสามารถเข้าสู่ระบบด้วยอีเมลได้"
+        )
       }
     >
+      {registered && <p role="status" className="mb-4 rounded-lg bg-accent-soft/60 px-3 py-2 text-sm">ยืนยันอีเมลและสมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ</p>}
       {next && !googleError && (
         <p role="status" className="mb-4 rounded-lg bg-accent-soft/60 px-3 py-2 text-sm">
-          กรุณาเข้าสู่ระบบก่อนสั่งซื้อ สินค้าในตะกร้าของคุณจะยังอยู่ครบ
+          {next === "/orders" ? "กรุณาเข้าสู่ระบบเพื่อดูและติดตามคำสั่งซื้อของคุณ" : "กรุณาเข้าสู่ระบบก่อนสั่งซื้อ สินค้าในตะกร้าของคุณจะยังอยู่ครบ"}
         </p>
       )}
       {googleError && (
@@ -107,8 +111,8 @@ export function LoginForm({ googleError, next }: { googleError?: string; next?: 
         </p>
       )}
       <GoogleButton label="เข้าสู่ระบบด้วย Google" />
-      <p className="mt-3 text-center text-xs text-muted">ใช้บัญชี Google เข้าสู่ระบบได้ทันที โดยไม่ต้องสมัครสมาชิก</p>
-      <OrDivider>แอดมินเข้าสู่ระบบด้วยชื่อผู้ใช้</OrDivider>
+      <p className="mt-3 text-center text-xs text-muted">ลูกค้าเข้าสู่ระบบด้วยอีเมล Google ได้ทันที โดยไม่ต้องสมัครสมาชิก</p>
+      <OrDivider>เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้</OrDivider>
       {loginError && <p role="alert" className="mb-4 text-sm text-danger">{loginError}</p>}
       <Form
         className="flex flex-col gap-4"
@@ -125,21 +129,21 @@ export function LoginForm({ googleError, next }: { googleError?: string; next?: 
           finally { setPending(false); }
         }}
       >
-        <TextField name="identifier" type="text" isRequired autoComplete="username" validate={(value) => value.trim() ? null : "กรุณากรอกชื่อผู้ใช้"}>
-          <Label>ชื่อผู้ใช้แอดมิน</Label>
-          <Input placeholder="ชื่อผู้ใช้แอดมิน" />
-          <FieldError>กรุณากรอกชื่อผู้ใช้</FieldError>
+        <TextField name="identifier" type="text" isRequired autoComplete="username" validate={(value) => value.trim() ? null : "กรุณากรอกอีเมลหรือชื่อผู้ใช้"}>
+          <Label>อีเมลลูกค้าหรือชื่อผู้ใช้แอดมิน</Label>
+          <Input placeholder="อีเมลลูกค้าหรือชื่อผู้ใช้แอดมิน" />
+          <FieldError>กรุณากรอกอีเมลหรือชื่อผู้ใช้</FieldError>
         </TextField>
         <TextField name="password" type={showPassword ? "text" : "password"} isRequired maxLength={128} autoComplete="current-password">
           <div className="flex items-center justify-between">
             <Label>รหัสผ่าน</Label>
-            <button type="button" className="text-xs text-accent hover:underline" onClick={() => toast("ให้แอดมินตั้งรหัสผ่านใหม่ที่หน้าจัดการแอดมิน หรือเข้าสู่ระบบด้วย Google")}>
+            <button type="button" className="text-xs text-accent hover:underline" onClick={() => toast("กรุณาติดต่อผู้ดูแลร้านหากต้องการความช่วยเหลือเรื่องรหัสผ่าน")}>
               ลืมรหัสผ่าน?
             </button>
           </div>
           <div className="edm-auth-password">
             <Input
-              placeholder="รหัสผ่านแอดมิน"
+              placeholder="รหัสผ่าน"
               onKeyDown={(event) => setCapsLock(event.getModifierState("CapsLock"))}
               onKeyUp={(event) => setCapsLock(event.getModifierState("CapsLock"))}
               onBlur={() => setCapsLock(false)}
@@ -170,9 +174,11 @@ export function LoginForm({ googleError, next }: { googleError?: string; next?: 
 }
 
 export function RegisterForm() {
-  const showFeedback = useFeedback();
   const router = useRouter();
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
   return (
     <AuthShell
       title="สมัครสมาชิก"
@@ -186,14 +192,28 @@ export function RegisterForm() {
         </>
       }
     >
-      <Form
+      {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
+      {email ? <Form className="flex flex-col gap-4" onSubmit={async (e) => {
+        e.preventDefault(); setPending(true); setError("");
+        try {
+          const response = await fetch("/api/auth/verify-registration", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, code: String(new FormData(e.currentTarget).get("code")) }) });
+          const result = await response.json(); if (!response.ok) throw new Error(result.error);
+          router.push("/login?registered=1");
+        } catch (error) { setError(error instanceof Error ? error.message : "ยืนยันไม่สำเร็จ"); } finally { setPending(false); }
+      }}>
+        <p className="text-sm">ส่งรหัส 6 หลักไปที่ {email} รหัสมีอายุ 10 นาที</p>
+        <TextField name="code" isRequired autoComplete="one-time-code"><Label>รหัสยืนยัน OTP</Label><Input inputMode="numeric" maxLength={6} /><FieldError>กรุณากรอกรหัสยืนยัน</FieldError></TextField>
+        <Button type="submit" size="lg" fullWidth isPending={pending}>ยืนยันและสมัครสมาชิก</Button>
+        <button type="button" className="text-sm text-accent" onClick={() => { setEmail(""); setError(""); }}>กลับไปขอรหัสใหม่</button>
+      </Form> : <Form
         className="flex flex-col gap-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const d = new FormData(e.currentTarget);
-          storeActions.signIn({ name: String(d.get("name")), email: String(d.get("email")), phone: String(d.get("phone") ?? "") });
-          showFeedback({ title: "สมัครสมาชิกสำเร็จ (เดโม)", description: "ยินดีต้อนรับสู่ EDM PC Shop จัดการข้อมูลของคุณได้ที่หน้าโปรไฟล์" });
-          router.push("/profile");
+        onSubmit={async (e) => {
+          e.preventDefault(); const d = new FormData(e.currentTarget); setPending(true); setError("");
+          try {
+            const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: d.get("name"), email: d.get("email"), phone: d.get("phone"), password: d.get("password") }) });
+            const result = await response.json(); if (!response.ok) throw new Error(result.error);
+            setEmail(String(d.get("email")).trim().toLowerCase());
+          } catch (error) { setError(error instanceof Error ? error.message : "สมัครไม่สำเร็จ"); } finally { setPending(false); }
         }}
       >
         <TextField name="name" isRequired autoComplete="name">
@@ -212,11 +232,11 @@ export function RegisterForm() {
             <Input placeholder="08x-xxx-xxxx" />
           </TextField>
         </div>
-        <TextField name="password" type="password" isRequired minLength={8} value={password} onChange={setPassword} autoComplete="new-password">
+        <TextField name="password" type="password" isRequired minLength={12} maxLength={128} value={password} onChange={setPassword} autoComplete="new-password">
           <Label>รหัสผ่าน</Label>
           <Input />
-          <Description>อย่างน้อย 8 ตัวอักษร</Description>
-          <FieldError>รหัสผ่านอย่างน้อย 8 ตัวอักษร</FieldError>
+          <Description>อย่างน้อย 12 ตัวอักษร</Description>
+          <FieldError>รหัสผ่านอย่างน้อย 12 ตัวอักษร</FieldError>
         </TextField>
         <TextField
           name="confirm"
@@ -237,10 +257,10 @@ export function RegisterForm() {
             <Label className="text-sm font-normal">ยอมรับข้อกำหนดการใช้งานและนโยบายความเป็นส่วนตัว</Label>
           </Checkbox.Content>
         </Checkbox>
-        <Button type="submit" size="lg" fullWidth>
-          สร้างบัญชี
+        <Button type="submit" size="lg" fullWidth isPending={pending}>
+          ส่งรหัสยืนยัน
         </Button>
-      </Form>
+      </Form>}
     </AuthShell>
   );
 }

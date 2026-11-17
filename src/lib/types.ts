@@ -87,6 +87,10 @@ export interface Order {
   id: string;
   createdAt: string;
   status: OrderStatus;
+  /** Payment state returned by the customer orders API. */
+  paymentStatus?: "pending" | "successful";
+  /** Payment identifier used to resume a pending payment. */
+  chargeId?: string;
   lines: OrderLine[];
   subtotal: number;
   shipping: number;
@@ -103,6 +107,11 @@ export interface Order {
   statusUpdatedAt?: string;
   /** Internal note for admins; removed before the order is sent to the customer. */
   adminNote?: string;
+  /**
+   * Internal: stock was taken when this order was paid. Orders paid before stock was tracked lack it, so cancelling
+   * them must not put back stock that was never taken. Removed before the order is sent to the customer.
+   */
+  stockTaken?: boolean;
 }
 
 export interface DemoUser {

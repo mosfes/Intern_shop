@@ -66,6 +66,7 @@ export const PhoneIcon = base(<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l
 export const MailIcon = base(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></>);
 export const CalendarIcon = base(<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>);
 export const SparkleIcon =base(<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z" />);
+export const PrinterIcon = base(<><path d="M7 9V3h10v6" /><rect x="3" y="9" width="18" height="8" rx="2" /><path d="M7 14h10v7H7z" /></>);
 
 export function StarIcon({ size = 14, filled = true, ...props }: IconProps & { filled?: boolean }) {
   return (

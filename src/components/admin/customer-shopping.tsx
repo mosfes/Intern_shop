@@ -1,5 +1,7 @@
 "use client";
 
+import { useAdminDataState, useAdminFetch } from "./admin-data";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -26,7 +28,9 @@ export function CustomerShoppingDialog({ customer, onClose }: { customer: Row; o
   const [tab, setTab] = useState<"cart" | "orders">("cart");
   const [page, setPage] = useState(1);
   const [reload, setReload] = useState(0);
-  const [data, setData] = useState<CustomerShopping | null>(null);
+  const cacheKey = `shopping:${customer.id}:${page}`;
+  const [data, setData] = useAdminDataState<CustomerShopping>(cacheKey);
+  const adminFetch = useAdminFetch(cacheKey);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -34,7 +38,7 @@ export function CustomerShoppingDialog({ customer, onClose }: { customer: Row; o
     const controller = new AbortController();
     void (async () => {
       try {
-        const response = await fetch(`/api/admin/users/${encodeURIComponent(customer.id)}/shopping?page=${page}`, { cache: "no-store", signal: controller.signal });
+        const response = await adminFetch(`/api/admin/users/${encodeURIComponent(customer.id)}/shopping?page=${page}`, { cache: "no-store", signal: controller.signal });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "โหลดข้อมูลไม่สำเร็จ");
         if (!controller.signal.aborted) setData(result);
@@ -45,10 +49,10 @@ export function CustomerShoppingDialog({ customer, onClose }: { customer: Row; o
       }
     })();
     return () => controller.abort();
-  }, [customer.id, page, reload]);
+  }, [customer.id, page, reload, adminFetch, setData]);
 
   function load(nextPage = page) {
-    setLoading(true); setError(""); setData(null); setPage(nextPage); setReload((value) => value + 1);
+    setLoading(true); setError(""); setPage(nextPage); setReload((value) => value + 1);
   }
   const subtotal = data?.cart.reduce((sum, line) => sum + (line.price ?? 0) * line.quantity, 0) ?? 0;
   const pricesComplete = data?.cart.every((line) => line.price !== null);
@@ -67,7 +71,7 @@ export function CustomerShoppingDialog({ customer, onClose }: { customer: Row; o
             <button type="button" aria-pressed={tab === "orders"} onClick={() => setTab("orders")} className={`${actionClass} ${tab === "orders" ? "bg-accent-soft text-accent" : ""}`}>คำสั่งซื้อ / การชำระเงิน{data && ` (${data.totalOrders})`}</button>
             <button type="button" disabled={loading} onClick={() => load()} className={`${actionClass} ml-auto`}>รีเฟรช</button>
           </div>
-          {loading && <p role="status" className="py-10 text-center text-sm text-muted">กำลังโหลดข้อมูลลูกค้า…</p>}
+          {loading && !data && <p role="status" className="py-10 text-center text-sm text-muted">กำลังโหลดข้อมูลลูกค้า…</p>}
           {error && <div role="alert" className="rounded-lg bg-danger-soft p-4 text-sm text-danger">{error} <button type="button" onClick={() => load()} className="underline">ลองใหม่</button></div>}
           {data && tab === "cart" && <section aria-label="ตะกร้าของลูกค้า" className="space-y-4">
             <p className="text-xs text-muted">ตะกร้าที่บันทึกไว้กับบัญชี · ราคาเป็นราคาปัจจุบัน ยังไม่รวมส่วนลดและค่าจัดส่ง</p>

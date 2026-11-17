@@ -104,7 +104,7 @@ export function BrandPicker({
           <button type="button" aria-pressed={allActive} onClick={() => onChange([])} className={tileCls(allActive)}>
             <GridIcon size={22} />
             <span className="text-[11px] font-medium leading-none">
-              ทั้งหมด <span className="opacity-70">({total})</span>
+              ทั้งหมด <span>({total})</span>
             </span>
           </button>
 

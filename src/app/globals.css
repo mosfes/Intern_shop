@@ -12,9 +12,11 @@
   :root,
   .light,
   [data-theme="light"] {
-    --accent: #c2410c;
+    --accent: #b93a08;
     --accent-foreground: #ffffff;
-    --focus: #c2410c;
+    --focus: #b93a08;
+    --danger: #dc2626;
+    --danger-foreground: #ffffff;
 
     --background: #f8fafc;
     --foreground: #0f172a;
@@ -23,7 +25,7 @@
     --surface-secondary: #f1f5f9;
     --surface-tertiary: #e2e8f0;
     --overlay: #ffffff;
-    --muted: #64748b;
+    --muted: #5a6a7e;
     --border: #e2e8f0;
     --separator: #e2e8f0;
     --default: #f1f5f9;

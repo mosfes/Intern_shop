@@ -1,5 +1,7 @@
 "use client";
 
+import { useAdminDataState, useAdminFetch } from "./admin-data";
+
 import { useEffect, useState } from "react";
 import { adminDevice } from "@/lib/admin-device";
 import { AdminPageHeader } from "./user-directory";
@@ -11,15 +13,17 @@ const actions: Record<string, string> = { LOGIN_PASSWORD: "เข้าสู่
 export function ActivityDirectory() {
   const [page, setPage] = useState(1);
   const [resource, setResource] = useState("");
-  const [result, setResult] = useState<{ logs: Log[]; total: number } | null>(null);
+  const cacheKey = `logs:${page}:${resource}`;
+  const [result, setResult] = useAdminDataState<{ logs: Log[]; total: number }>(cacheKey);
+  const adminFetch = useAdminFetch(cacheKey);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     async function load() {
-      setResult(null); setError("");
+      setError("");
       try {
-        const response = await fetch(`/api/admin/logs?page=${page}&resource=${encodeURIComponent(resource)}`, { cache: "no-store", signal: controller.signal });
+        const response = await adminFetch(`/api/admin/logs?page=${page}&resource=${encodeURIComponent(resource)}`, { cache: "no-store", signal: controller.signal });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "โหลดประวัติไม่สำเร็จ");
         if (!controller.signal.aborted) setResult(data);
@@ -27,7 +31,7 @@ export function ActivityDirectory() {
     }
     void load();
     return () => controller.abort();
-  }, [page, resource, revision]);
+  }, [page, resource, revision, adminFetch, setResult]);
   return <>
     <AdminPageHeader title="ประวัติกิจกรรมแอดมิน" description="ตรวจสอบการจัดการข้อมูล ผู้ดำเนินการ และผลลัพธ์" />
     <section className="space-y-4 rounded-xl border border-border bg-surface p-5">

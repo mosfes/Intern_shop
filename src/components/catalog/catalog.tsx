@@ -14,49 +14,76 @@ import {
   ToggleButton,
   ToggleButtonGroup,
 } from "@heroui/react";
-import { useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { CloseIcon, FilterIcon, GridIcon, ListIcon, SearchIcon } from "@/components/icons";
 import { ProductCard } from "@/components/product/product-card";
-import { useCatalog } from "@/components/catalog-provider";
+import { useCatalogMeta } from "@/components/catalog-provider";
 import { PRICE_MIN } from "@/lib/catalog";
+import { catalogHref, defaultFilters, type CatalogResult, type CatalogState } from "@/lib/catalog-query";
 import { facetMap, pruneSpecs } from "@/lib/spec-filters";
 import { formatBaht } from "@/lib/format";
-import { filterProducts, searchProducts, sortOptions, sortProducts, type CatalogFilters, type SortKey } from "@/lib/search";
+import { sortOptions, type CatalogFilters, type SortKey } from "@/lib/search";
 import { BrandPicker } from "./brand-picker";
-import { FilterPanel, defaultFilters } from "./filter-panel";
-
-const PAGE_SIZE = 12;
-
+import { FilterPanel } from "./filter-panel";
 
 export interface CatalogProps {
   mode: "products" | "search";
-  initialFilters?: Partial<CatalogFilters>;
-  initialQuery?: string;
-  initialSort?: SortKey;
+  /** Filters, query, sort and page as read from the URL by the server. */
+  state: CatalogState;
+  /** The current page of results and the filter panel's data, computed on the server. */
+  result: CatalogResult;
 }
 
-export function Catalog({ mode, initialFilters, initialQuery = "", initialSort = "featured" }: CatalogProps) {
-  const { products, categoryMap, priceMax, brandsForCategories } = useCatalog();
-  const [filters, setFilters] = useState<CatalogFilters>({ ...defaultFilters(priceMax), ...initialFilters });
-  const [query, setQuery] = useState(initialQuery);
-  const [sort, setSort] = useState<SortKey>(initialSort);
+/**
+ * Product listing UI. Every change is written to the URL (router.replace in a transition); the server filters
+ * and sends back one page. Controls update instantly through useOptimistic while the new page loads.
+ */
+export function Catalog({ mode, state, result }: CatalogProps) {
+  const { categoryMap } = useCatalogMeta();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
+  const [optimistic, setOptimistic] = useOptimistic(state);
+  const { filters, sort } = optimistic;
+  const { priceMax } = result.panel;
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const results = useMemo(
-    () => sortProducts(filterProducts(searchProducts(query, products, categoryMap), filters), sort),
-    [products, categoryMap, query, filters, sort],
-  );
-  const pageCount = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
-  const visible = results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-  const update = (f: CatalogFilters) => {
-    setFilters(f);
-    setPage(1);
+  const navigate = (next: CatalogState) => {
+    startTransition(() => {
+      setOptimistic(next);
+      router.replace(catalogHref(pathname, next, priceMax), { scroll: false });
+    });
   };
+  const update = (f: CatalogFilters) => navigate({ ...optimistic, filters: f, page: 1 });
   const reset = () => update(defaultFilters(priceMax));
+
+  // Search box: typing is local and sent to the URL after a short pause. A query that arrives from elsewhere
+  // (e.g. the header search) replaces the text, but our own debounced query coming back doesn't clobber typing.
+  const [queryInput, setQueryInput] = useState(state.query);
+  const [shownQuery, setShownQuery] = useState(state.query);
+  const [sentQuery, setSentQuery] = useState(state.query);
+  if (state.query !== shownQuery) {
+    setShownQuery(state.query);
+    if (state.query !== sentQuery) setQueryInput(state.query);
+  }
+  const query = optimistic.query;
+  const queryTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(queryTimer.current), []);
+  const changeQuery = (value: string) => {
+    setQueryInput(value);
+    window.clearTimeout(queryTimer.current);
+    queryTimer.current = window.setTimeout(() => {
+      const next = value.trim().slice(0, 100);
+      setSentQuery(next);
+      navigate({ ...optimistic, query: next, page: 1 });
+    }, 300);
+  };
+
+  const visible = result.products;
+  const pageCount = result.pageCount;
+  const currentPage = Math.min(optimistic.page, pageCount);
 
   const singleCategory = (filters.categories.length === 1 && categoryMap.get(filters.categories[0])) || null;
   const categoryTitle =
@@ -65,7 +92,7 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
       : filters.categories.length === 1
         ? (categoryMap.get(filters.categories[0])?.nameTh ?? filters.categories[0])
         : `${filters.categories.length} หมวดหมู่ที่เลือก`;
-  const availableBrands = useMemo(() => brandsForCategories(filters.categories), [brandsForCategories, filters.categories]);
+  const availableBrands = result.panel.brands;
   const title = mode === "search" ? (query ? `ผลการค้นหา “${query}”` : "ค้นหาสินค้า") : categoryTitle || "สินค้าทั้งหมด";
   const description = mode === "search" ? "ค้นหาจากชื่อสินค้า แบรนด์ หมวดหมู่ หรือสเปก" : null;
 
@@ -108,7 +135,7 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
   ];
 
   const changePage = (p: number) => {
-    setPage(p);
+    navigate({ ...optimistic, page: p });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -138,11 +165,8 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
         {mode === "search" && (
           <SearchField
             aria-label="ค้นหาสินค้า"
-            value={query}
-            onChange={(v) => {
-              setQuery(v);
-              setPage(1);
-            }}
+            value={queryInput}
+            onChange={changeQuery}
             className="max-w-xl"
             fullWidth
           >
@@ -167,7 +191,7 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
       <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
         <aside className="hidden lg:block" aria-label="ตัวกรองสินค้า">
           <div className="sticky top-36 max-h-[calc(100vh-10rem)] overflow-y-auto rounded-xl border border-border bg-surface p-5 no-scrollbar">
-            <FilterPanel filters={filters} onChange={update} onReset={reset} />
+            <FilterPanel filters={filters} panel={result.panel} onChange={update} onReset={reset} />
           </div>
         </aside>
 
@@ -192,11 +216,11 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
                       <Drawer.Heading className="sr-only">ตัวกรองสินค้า</Drawer.Heading>
                     </Drawer.Header>
                     <Drawer.Body className="overflow-y-auto">
-                      <FilterPanel filters={filters} onChange={update} onReset={reset} />
+                      <FilterPanel filters={filters} panel={result.panel} onChange={update} onReset={reset} />
                     </Drawer.Body>
                     <Drawer.Footer>
                       <Button fullWidth onPress={() => setFiltersOpen(false)}>
-                        แสดงสินค้า {results.length} รายการ
+                        แสดงสินค้า {result.total} รายการ
                       </Button>
                     </Drawer.Footer>
                   </Drawer.Dialog>
@@ -205,7 +229,7 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
             </Drawer>
 
             <p className="text-sm text-muted" aria-live="polite">
-              พบ <span className="font-semibold text-foreground">{results.length}</span> รายการ
+              พบ <span className="font-semibold text-foreground">{result.total}</span> รายการ
             </p>
 
             <div className="ml-auto flex items-center gap-2">
@@ -213,8 +237,7 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
                 aria-label="เรียงลำดับ"
                 value={sort}
                 onChange={(k) => {
-                  if (k) setSort(k as SortKey);
-                  setPage(1);
+                  if (k) navigate({ ...optimistic, sort: k as SortKey, page: 1 });
                 }}
                 className="w-44 sm:w-52"
               >
@@ -277,6 +300,7 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
             </div>
           )}
 
+          <div aria-busy={isPending} className={`transition-opacity ${isPending ? "opacity-60" : ""}`}>
           {visible.length === 0 ? (
             <EmptyState className="rounded-xl border border-dashed border-border bg-surface py-16">
               <span className="mb-4 grid size-14 place-items-center rounded-lg bg-surface-secondary text-muted">
@@ -288,8 +312,10 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
                 className="mt-5"
                 variant="secondary"
                 onPress={() => {
-                  reset();
-                  setQuery("");
+                  window.clearTimeout(queryTimer.current);
+                  setQueryInput("");
+                  setSentQuery("");
+                  navigate({ ...optimistic, query: "", filters: defaultFilters(priceMax), page: 1 });
                 }}
               >
                 ล้างการค้นหาและตัวกรอง
@@ -308,12 +334,13 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
               ))}
             </div>
           )}
+          </div>
 
           {pageCount > 1 && (
             <Pagination className="mt-10 justify-center">
               <Pagination.Content>
                 <Pagination.Item>
-                  <Pagination.Previous isDisabled={currentPage === 1} onPress={() => changePage(currentPage - 1)}>
+                  <Pagination.Previous aria-label="หน้าก่อนหน้า" isDisabled={currentPage === 1} onPress={() => changePage(currentPage - 1)}>
                     <Pagination.PreviousIcon />
                     <span className="hidden sm:inline">ก่อนหน้า</span>
                   </Pagination.Previous>
@@ -326,7 +353,7 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
                   </Pagination.Item>
                 ))}
                 <Pagination.Item>
-                  <Pagination.Next isDisabled={currentPage === pageCount} onPress={() => changePage(currentPage + 1)}>
+                  <Pagination.Next aria-label="หน้าถัดไป" isDisabled={currentPage === pageCount} onPress={() => changePage(currentPage + 1)}>
                     <span className="hidden sm:inline">ถัดไป</span>
                     <Pagination.NextIcon />
                   </Pagination.Next>

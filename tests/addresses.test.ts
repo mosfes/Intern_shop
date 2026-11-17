@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AddressError, formatAddressLine, sortAddresses, validateAddress } from "../src/lib/addresses";
+import { AddressError, formatAddressLine, sortAddresses, validateAddress, validateContact } from "../src/lib/addresses";
 
 const valid = {
   label: " บ้าน ",
@@ -51,4 +51,12 @@ test("postcode must match the selected subdistrict, even within one district", (
 
 test("legacy saved addresses still display without an empty locality", () => {
   assert.equal(formatAddressLine({ ...validate(), subdistrict: "" }), "99/1 ถนนสุขุมวิท บางรัก กรุงเทพมหานคร 10500");
+});
+
+
+test("pickup contact requires a valid name and phone without an address", () => {
+  assert.deepEqual(validateContact({ fullName: " สมชาย ใจดี ", phone: "081-234-5678" }), { fullName: "สมชาย ใจดี", phone: "081-234-5678" });
+  assert.throws(() => validateContact({ fullName: "", phone: "081-234-5678" }), AddressError);
+  assert.throws(() => validateContact({ fullName: "สมชาย", phone: "abc" }), AddressError);
+  assert.throws(() => validateAddress({ fullName: "สมชาย", phone: "081-234-5678" }), AddressError);
 });

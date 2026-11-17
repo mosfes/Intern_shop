@@ -2,10 +2,14 @@ import type { OmiseCharge } from "./omise";
 import { orderIdForCharge } from "./pending-payment";
 import { prisma } from "./prisma";
 import type { Order } from "./types";
+import { enqueueOrderEmail, sendOrderEmail } from "./order-email";
+import { adjustDatabaseStock, finishStockAdjustment, type StockLine } from "./stock";
 
 /** Only call with a charge fetched directly from Omise, never the webhook body. */
 export async function settleCharge(charge: OmiseCharge) {
-  return prisma.$transaction(async (tx) => {
+  let emailId: string | undefined;
+  let stockTaken: StockLine[] | undefined;
+  const result = await prisma.$transaction(async (tx) => {
     const payment = await tx.checkoutPayment.findFirst({
       where: { OR: [
         { chargeId: charge.id },
@@ -26,10 +30,14 @@ export async function settleCharge(charge: OmiseCharge) {
     const updated = await tx.checkoutPayment.updateMany({ where: {
       id: payment.id, status: status === "pending" ? "pending" : { not: "successful" },
     }, data: {
-      chargeId: charge.id, status, order: JSON.parse(JSON.stringify(order)),
+      chargeId: charge.id, status, order: JSON.parse(JSON.stringify(status === "successful" ? { ...order, stockTaken: true } : order)),
     } });
     if (status !== "successful") return null;
     if (!updated.count) return order;
+
+    // Only the update that moved this payment to successful gets here, so stock is taken exactly once per order,
+    // in the same transaction as the payment itself. MockAPI products are handled after the commit.
+    stockTaken = await adjustDatabaseStock(tx, order.lines, "take");
 
     const recorded = await tx.paymentCharge.createMany({
       data: [{ chargeId: charge.id, userId: payment.userId, amount: charge.amount, discountCode: order.discountCode ?? null }],
@@ -41,7 +49,14 @@ export async function settleCharge(charge: OmiseCharge) {
         await tx.discountCode.updateMany({ where: { code: order.discountCode }, data: { usedCount: { increment: 1 } } });
       }
       await tx.cartItem.deleteMany({ where: { userId: payment.userId, productId: { in: order.lines.map((line) => line.productId) } } });
+      if (process.env.RESEND_API_KEY && process.env.RESEND_FROM) {
+        emailId = `paid/${payment.id}`;
+        await enqueueOrderEmail(tx, emailId, payment.userId, order, "paid", charge.id);
+      }
     }
     return order;
   });
+  if (stockTaken) await finishStockAdjustment(stockTaken, "take");
+  if (emailId) await sendOrderEmail(emailId).catch(() => false);
+  return result;
 }

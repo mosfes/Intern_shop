@@ -1,5 +1,7 @@
 "use client";
 
+import { useAdminDataState, useAdminFetch } from "./admin-data";
+
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { Chip, Skeleton } from "@heroui/react";
@@ -22,18 +24,19 @@ function change(current: number, previous: number) {
 }
 
 export function SalesOverview({ onNavigate }: { onNavigate: (section: AdminSection) => void }) {
-  const [data, setData] = useState<AdminOverview | null>(null);
+  const adminFetch = useAdminFetch("overview");
+  const [data, setData] = useAdminDataState<AdminOverview>("overview");
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setError("");
     try {
-      const response = await fetch("/api/admin/overview", { cache: "no-store" });
+      const response = await adminFetch("/api/admin/overview", { cache: "no-store" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
       setData(result);
     } catch (cause) { setError(cause instanceof Error && cause.message ? cause.message : "โหลดภาพรวมไม่สำเร็จ"); }
-  }, []);
+  }, [adminFetch, setData]);
   useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [load]);
 
   if (error) return <div role="alert" className="rounded-lg bg-danger-soft p-4 text-danger">{error} <button className="underline" onClick={() => void load()}>ลองใหม่</button></div>;
@@ -51,8 +54,8 @@ export function SalesOverview({ onNavigate }: { onNavigate: (section: AdminSecti
   const waiting = data.orders.byStatus.processing;
 
   const tiles = [
-    { title: "ยอดขายเดือนนี้", value: baht(data.revenue.month), detail: monthChange?.text ?? "ยังไม่มียอดขาย", tone: monthChange ? (monthChange.up ? "text-success" : "text-danger") : "text-muted", icon: CreditCardIcon },
     { title: "ยอดขายวันนี้", value: baht(data.revenue.today), detail: `${data.orders.today.toLocaleString("th-TH")} คำสั่งซื้อวันนี้`, tone: "text-muted", icon: CalendarIcon },
+    { title: "ยอดขายเดือนนี้", value: baht(data.revenue.month), detail: monthChange?.text ?? "ยังไม่มียอดขาย", tone: monthChange ? (monthChange.up ? "text-success" : "text-danger") : "text-muted", icon: CreditCardIcon },
     { title: "คำสั่งซื้อเดือนนี้", value: data.orders.month.toLocaleString("th-TH"), detail: `เฉลี่ย ${baht(data.orders.averageValue)} / คำสั่งซื้อ`, tone: "text-muted", icon: CartIcon },
     { title: "ยอดขายรวมทั้งหมด", value: baht(data.revenue.total), detail: `${data.orders.total.toLocaleString("th-TH")} คำสั่งซื้อที่ชำระแล้ว`, tone: "text-muted", icon: PackageIcon },
   ];
@@ -76,8 +79,8 @@ export function SalesOverview({ onNavigate }: { onNavigate: (section: AdminSecti
         </button>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <section className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <section className="min-w-0 rounded-xl border border-border bg-surface p-5 sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-lg font-semibold">ยอดขาย {data.daily.length} วันล่าสุด</h2><p className="mt-1 text-sm text-muted">{baht(trendTotal)} · {trendOrders.toLocaleString("th-TH")} คำสั่งซื้อ (ไม่รวมที่ยกเลิก)</p></div></div>
           <div className="mt-6 flex h-48 items-end gap-1 sm:gap-1.5" role="img" aria-label={`กราฟยอดขายรายวัน ${data.daily.length} วันล่าสุด`}>
             {data.daily.map((day) => (
@@ -90,20 +93,20 @@ export function SalesOverview({ onNavigate }: { onNavigate: (section: AdminSecti
           <div className="mt-2 flex justify-between text-xs text-muted"><span>{shortDay(data.daily[0].date)}</span><span>{shortDay(data.daily[data.daily.length - 1].date)}</span></div>
         </section>
 
-        <section className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+        <section className="min-w-0 rounded-xl border border-border bg-surface p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">สถานะคำสั่งซื้อ</h2><button className="text-sm text-accent hover:underline" onClick={() => onNavigate("orders")}>ดูทั้งหมด</button></div>
           <div className="mt-5 flex h-2.5 overflow-hidden rounded-full bg-surface-secondary">{data.orders.total > 0 && ORDER_STATUSES.map((status) => <div key={status} className={statusBar[status]} style={{ width: `${(data.orders.byStatus[status] / data.orders.total) * 100}%` }} />)}</div>
           <ul className="mt-5 space-y-3">{ORDER_STATUSES.map((status) => <li key={status} className="flex items-center gap-3 text-sm"><span className={`size-2.5 shrink-0 rounded-full ${statusBar[status]}`} /><span className="flex-1">{orderStatusLabel[status]}</span><span className="font-semibold tabular-nums">{data.orders.byStatus[status].toLocaleString("th-TH")}</span></li>)}</ul>
         </section>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <section className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <section className="min-w-0 rounded-xl border border-border bg-surface p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">คำสั่งซื้อล่าสุด</h2><button className="text-sm text-accent hover:underline" onClick={() => onNavigate("orders")}>จัดการคำสั่งซื้อ</button></div>
           {data.recentOrders.length === 0 ? <p className="py-8 text-center text-sm text-muted">ยังไม่มีคำสั่งซื้อที่ชำระเงินแล้ว</p> : (
             <ul className="mt-4 divide-y divide-border">{data.recentOrders.map((order) => (
               <li key={order.id} className="flex flex-wrap items-center gap-3 py-3.5">
-                <div className="min-w-0 flex-1"><p className="truncate font-mono text-sm font-medium">{order.orderId}</p><p className="mt-0.5 text-xs text-muted">{dateTime(order.createdAt)} · {order.items} ชิ้น</p></div>
+                <div className="min-w-0 flex-1 basis-40"><p className="truncate font-mono text-sm font-medium">{order.orderId}</p><p className="mt-0.5 text-xs text-muted">{dateTime(order.createdAt)} · {order.items} ชิ้น</p></div>
                 <Chip size="sm" variant="soft" color={statusColor[order.status]}>{orderStatusLabel[order.status]}</Chip>
                 <span className="w-24 text-right text-sm font-semibold tabular-nums">{baht(order.total)}</span>
               </li>
@@ -111,8 +114,16 @@ export function SalesOverview({ onNavigate }: { onNavigate: (section: AdminSecti
           )}
         </section>
 
-        <div className="space-y-6">
-          <section className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+        <div className="min-w-0 space-y-6">
+          <section className="min-w-0 rounded-xl border border-border bg-surface p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">สินค้าใกล้หมด</h2><button className="text-sm text-accent hover:underline" onClick={() => onNavigate("products")}>จัดการสินค้า</button></div>
+            {data.lowStock.length === 0 ? <p className="py-6 text-center text-sm text-muted">สต็อกสินค้าทุกรายการยังเพียงพอ</p> : (
+              <ul className="mt-4 space-y-2.5">{data.lowStock.map((product) => (
+                <li key={product.id} className="flex items-center gap-3 text-sm"><span className="min-w-0 flex-1 truncate">{product.name}</span><Chip size="sm" variant="soft" color={product.stock === 0 ? "danger" : "warning"}>{product.stock === 0 ? "หมด" : `เหลือ ${product.stock}`}</Chip></li>
+              ))}</ul>
+            )}
+          </section>
+          <section className="min-w-0 rounded-xl border border-border bg-surface p-5 sm:p-6">
             <h2 className="text-lg font-semibold">สินค้าขายดี {TOP_PRODUCT_DAYS} วันล่าสุด</h2>
             {data.topProducts.length === 0 ? <p className="py-6 text-center text-sm text-muted">ยังไม่มีข้อมูลการขาย</p> : (
               <ol className="mt-4 space-y-3">{data.topProducts.map((product, index) => (
@@ -125,14 +136,6 @@ export function SalesOverview({ onNavigate }: { onNavigate: (section: AdminSecti
             )}
           </section>
 
-          <section className="rounded-xl border border-border bg-surface p-5 sm:p-6">
-            <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">สินค้าใกล้หมด</h2><button className="text-sm text-accent hover:underline" onClick={() => onNavigate("products")}>จัดการสินค้า</button></div>
-            {data.lowStock.length === 0 ? <p className="py-6 text-center text-sm text-muted">สต็อกสินค้าทุกรายการยังเพียงพอ</p> : (
-              <ul className="mt-4 space-y-2.5">{data.lowStock.map((product) => (
-                <li key={product.id} className="flex items-center gap-3 text-sm"><span className="min-w-0 flex-1 truncate">{product.name}</span><Chip size="sm" variant="soft" color={product.stock === 0 ? "danger" : "warning"}>{product.stock === 0 ? "หมด" : `เหลือ ${product.stock}`}</Chip></li>
-              ))}</ul>
-            )}
-          </section>
         </div>
       </div>
     </div>

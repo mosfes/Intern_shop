@@ -321,9 +321,9 @@ export const storeActions = {
       return s.user?.googleId ? { ...s, user: null, orders: [], cartOwner: null, cartDirty: false } : s;
     });
     if (user?.googleId && user.role !== "admin") void loadAddressBook(user.googleId);
-    void storeActions.refreshOrders().then(() => pullCart());
+    void Promise.all([storeActions.refreshOrders(), pullCart()]);
   },
-  /** Paid orders are stored on the server, including payments completed with the browser closed. */
+  /** Refresh server orders, including payments completed with the browser closed. */
   async refreshOrders() {
     load();
     const account = syncedAccount();
@@ -335,7 +335,7 @@ export const storeActions = {
       if (syncedAccount() !== account || !Array.isArray(result.orders)) return;
       const orders = result.orders as Order[];
       setState((s) => {
-        const merged = new Map(s.orders.map((order) => [order.id, order]));
+        const merged = new Map(s.orders.filter((order) => order.paymentStatus !== "pending").map((order) => [order.id, order]));
         for (const order of orders) merged.set(order.id, order);
         return { ...s, orders: [...merged.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)) };
       }, true);
@@ -353,10 +353,10 @@ export const storeActions = {
     load();
     if (!state.user || state.user.role === "admin") return false;
     // The same paid order can be settled more than once (reload, second tab); keep one copy.
-    if (state.orders.some((o) => o.id === order.id)) return true;
+    if (state.orders.some((o) => o.id === order.id && o.paymentStatus !== "pending")) return true;
     // Only the lines that were ordered leave the cart; unticked items stay for later.
     const ordered = new Set(order.lines.map((l) => l.productId));
-    setState((s) => ({ ...s, orders: [order, ...s.orders], cart: s.cart.filter((l) => !ordered.has(l.productId)) }));
+    setState((s) => ({ ...s, orders: [order, ...s.orders.filter((existing) => existing.id !== order.id)], cart: s.cart.filter((l) => !ordered.has(l.productId)) }));
     return true;
   },
 };

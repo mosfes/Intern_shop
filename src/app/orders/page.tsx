@@ -9,6 +9,7 @@ export default function Page() {
   return (
     <Container className="pt-8">
       <PageHeader title="คำสั่งซื้อของฉัน" description="ติดตามสถานะและเลือกคำสั่งซื้อเพื่อดูรายละเอียด" />
+      {/* Order details link each item to its product page, which needs the product list for slugs. */}
       <CatalogProducts><OrdersView /></CatalogProducts>
     </Container>
   );

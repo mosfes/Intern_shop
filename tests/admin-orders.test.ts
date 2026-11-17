@@ -27,12 +27,24 @@ stub(prisma.shopUser, "findMany", async () => [users[1]]);
 stub(prisma.adminCredential, "findUnique", async ({ where }: { where: { email: string } }) => where.email === users[0].email ? { active: true, version: 1 } : null);
 stub(prisma.adminActivityLog, "create", async () => ({ id: "log" }));
 stub(prisma.adminActivityLog, "update", async () => ({}));
+let lastListWhere = "";
 stub(prisma.checkoutPayment, "findMany", async ({ where }: { where: unknown }) => {
-  // Only paid orders are ever listed.
-  assert.match(JSON.stringify(where), /"status":"successful"/);
+  // Paid orders, or unpaid ones that already have a charge; never failed or abandoned checkouts.
+  lastListWhere = JSON.stringify(where);
+  assert.match(lastListWhere, /"status":"successful"|"status":"pending","chargeId":\{"not":null\}/);
   return [row];
 });
-stub(prisma.checkoutPayment, "count", async () => 1);
+let countQueries = 0;
+let countRows = [{ status: "processing" as string | null, total: BigInt(1) }];
+let lastCountQuery: { sql: string; values: unknown[] };
+stub(prisma, "$queryRaw", async (query: { sql: string; values: unknown[] }) => {
+  countQueries += 1;
+  lastCountQuery = query;
+  assert.match(query.sql, /WHERE \(status = 'successful' OR \(status = 'pending' AND chargeId IS NOT NULL\)\)/);
+  assert.match(query.sql, /GROUP BY/);
+  return countRows;
+});
+stub(prisma.checkoutPayment, "count", async () => { throw new Error("Do not scan separately for every status"); });
 stub(prisma.checkoutPayment, "findUnique", async ({ where }: { where: { id: string } }) => where.id === row.id ? row : null);
 stub(prisma.checkoutPayment, "updateMany", async ({ where, data }: { where: { updatedAt: Date }; data: { order: unknown } }) => {
   if (where.updatedAt.getTime() !== row.updatedAt.getTime()) return { count: 0 };
@@ -67,13 +79,62 @@ test("only admins can list orders, with customer details and status counts", asy
   assert.equal((await list()).status, 401);
   assert.equal((await list("customer")).status, 403);
   assert.equal((await list("admin", "?status=lost")).status, 400);
+  const before = countQueries;
   const response = await list("admin", "?status=processing&q=customer");
+  assert.equal(countQueries - before, 1);
+  assert.ok(lastCountQuery.values.includes("%CUSTOMER%"));
+  assert.ok(lastCountQuery.values.includes("%customer%"));
+  assert.ok(lastCountQuery.values.includes("customer"));
   assert.equal(response.status, 200);
   const data = await response.json();
   assert.equal(data.orders[0].order.id, "CBABC12345");
   assert.equal(data.orders[0].amount, 1060);
   assert.equal(data.orders[0].customer.email, "customer@example.com");
-  assert.deepEqual(Object.keys(data.counts), ["all", "processing", "shipped", "delivered", "cancelled"]);
+  assert.equal(data.orders[0].paid, true);
+  assert.deepEqual(data.counts, { all: 1, processing: 1, shipped: 0, delivered: 0, cancelled: 0, unpaid: 0 });
+  assert.equal(data.total, 1);
+});
+
+test("one grouped count preserves totals for filters, empty results and unknown legacy statuses", async () => {
+  countRows = [{ status: "processing", total: BigInt(7) }, { status: "shipped", total: BigInt(3) }, { status: null, total: BigInt(2) }];
+  const all = await (await list("admin")).json();
+  assert.deepEqual(all.counts, { all: 12, processing: 7, shipped: 3, delivered: 0, cancelled: 0, unpaid: 0 });
+  assert.equal(all.total, 12);
+  const filtered = await (await list("admin", "?status=shipped")).json();
+  assert.equal(filtered.total, 3);
+  assert.equal(filtered.counts.all, 12);
+  countRows = [];
+  const empty = await (await list("admin", "?status=delivered")).json();
+  assert.equal(empty.total, 0);
+  assert.equal(empty.counts.all, 0);
+  countRows = [{ status: "processing", total: BigInt(1) }];
+});
+
+
+test("unpaid orders appear in all orders and have their own tab and count", async () => {
+  countRows = [{ status: "processing", total: BigInt(4) }, { status: "unpaid", total: BigInt(2) }];
+  const all = await (await list("admin")).json();
+  assert.deepEqual(all.counts, { all: 6, processing: 4, shipped: 0, delivered: 0, cancelled: 0, unpaid: 2 });
+  assert.equal(all.total, 6);
+  assert.match(lastListWhere, /"status":"successful"/);
+  assert.match(lastListWhere, /"status":"pending","chargeId":\{"not":null\}/);
+  const paidRow = row;
+  row = { ...row, status: "pending" };
+  const unpaid = await (await list("admin", "?status=unpaid")).json();
+  row = paidRow;
+  assert.match(lastListWhere, /"status":"pending","chargeId":\{"not":null\}/);
+  assert.doesNotMatch(lastListWhere, /"status":"successful"/);
+  assert.equal(unpaid.total, 2);
+  assert.equal(unpaid.orders[0].paid, false);
+  countRows = [{ status: "processing", total: BigInt(1) }];
+});
+
+test("search text is bound as SQL parameters, including quotes and wildcard characters", async () => {
+  const query = "x' OR 1=1 --_%";
+  const response = await list("admin", `?q=${encodeURIComponent(query)}`);
+  assert.equal(response.status, 200);
+  assert.ok(lastCountQuery.values.includes(`%${query}%`));
+  assert.ok(!lastCountQuery.sql.includes(query));
 });
 
 test("admin updates status, rejects stale edits and keeps customers out", async () => {

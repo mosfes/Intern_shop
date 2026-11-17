@@ -1,5 +1,7 @@
 "use client";
 
+import { useAdminDataState, useAdminFetch } from "./admin-data";
+
 import { Modal } from "@heroui/react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { EditIcon, PlusIcon, TagIcon, TrashIcon } from "@/components/icons";
@@ -16,22 +18,23 @@ async function read(response: Response) {
   if (!response.ok) throw new Error(result.error || "ดำเนินการไม่สำเร็จ กรุณาลองอีกครั้ง");
   return result;
 }
-const send = (method: string, body: unknown) => fetch("/api/admin/discount-codes", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(read);
 const randomCode = () => `EDM${Array.from(crypto.getRandomValues(new Uint8Array(5)), (n) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[n % 32]).join("")}`;
 const today = () => expiryDay(new Date());
 const status = (code: DiscountCode) => !code.active ? "ปิดใช้งาน" : code.expiresAt && code.expiresAt < today() ? "หมดอายุ" : code.usageLimit !== null && code.usedCount >= code.usageLimit ? "ใช้ครบแล้ว" : "ใช้งานได้";
 
 export function DiscountCodeDirectory() {
+  const adminFetch = useAdminFetch("discounts");
+  const send = (method: string, body: unknown) => adminFetch("/api/admin/discount-codes", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(read);
   const feedback = useFeedback();
-  const [codes, setCodes] = useState<DiscountCode[] | null>(null);
+  const [codes, setCodes] = useAdminDataState<DiscountCode[]>("discounts");
   const [error, setError] = useState(""); const [pending, setPending] = useState(false);
   const [editor, setEditor] = useState<{ record: DiscountCode | null } | null>(null);
   const [deleting, setDeleting] = useState<DiscountCode | null>(null); const [deleteError, setDeleteError] = useState("");
   const refresh = useCallback(async () => {
     setError("");
-    try { setCodes((await read(await fetch("/api/admin/discount-codes", { cache: "no-store" }))).codes); }
+    try { setCodes((await read(await adminFetch("/api/admin/discount-codes", { cache: "no-store" }))).codes); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "โหลดข้อมูลไม่สำเร็จ"); }
-  }, []);
+  }, [adminFetch, setCodes]);
   useEffect(() => { const timer = window.setTimeout(() => { void refresh(); }, 0); return () => window.clearTimeout(timer); }, [refresh]);
 
   const upsert = (code: DiscountCode) => setCodes((current) => current && [code, ...current.filter((row) => row.code !== code.code)].sort((a, b) => a.code.localeCompare(b.code)));

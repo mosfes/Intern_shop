@@ -56,7 +56,7 @@ export const brandColors: Record<string, { light: string; dark: string }> = {
   "Lian Li": { light: "#D31F26", dark: "#FF5C5C" },
   "Fractal Design": { light: "#222222", dark: "#E5E7EB" },
   Crucial: { light: "#0073CF", dark: "#3BA0FF" },
-  ARCTIC: { light: "#00A0E3", dark: "#2BC0F5" },
+  ARCTIC: { light: "#0079AD", dark: "#2BC0F5" },
   Lexar: { light: "#D8232A", dark: "#FF4B50" },
 };
 

@@ -19,5 +19,5 @@ async function ChangePasswordContent() {
 }
 
 export default function Page() {
-  return <Suspense fallback={<p role="status" className="p-8 text-center text-muted">กำลังตรวจสอบบัญชี…</p>}><ChangePasswordContent /></Suspense>;
+  return <Suspense fallback={<p role="status" className="grid min-h-[70vh] place-items-center p-8 text-center text-muted">กำลังตรวจสอบบัญชี…</p>}><ChangePasswordContent /></Suspense>;
 }

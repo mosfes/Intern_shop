@@ -1,5 +1,7 @@
 "use client";
 
+import { useAdminDataState, useAdminFetch } from "./admin-data";
+
 import { Chip, Modal } from "@heroui/react";
 import Link from "next/link";
 import Image from "next/image";
@@ -29,9 +31,10 @@ async function readResponse(response: Response) {
 }
 
 export function ProductDirectory() {
+  const adminFetch = useAdminFetch("products");
   const router = useRouter();
   const showFeedback = useFeedback();
-  const [data, setData] = useState<Directory | null>(null);
+  const [data, setData] = useAdminDataState<Directory>("products");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
@@ -45,16 +48,16 @@ export function ProductDirectory() {
 
   const refresh = useCallback(async () => {
     setLoading(true); setError("");
-    try { setData(await readResponse(await fetch("/api/admin/products", { cache: "no-store" }))); }
+    try { setData(await readResponse(await adminFetch("/api/admin/products", { cache: "no-store" }))); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "โหลดข้อมูลสินค้าไม่สำเร็จ"); }
     finally { setLoading(false); }
-  }, []);
+  }, [adminFetch, setData]);
   useEffect(() => { const timer = window.setTimeout(() => { void refresh(); }, 0); return () => window.clearTimeout(timer); }, [refresh]);
 
   async function save(body: Record<string, unknown>): Promise<string | null> {
     setPending(true);
     try {
-      const { product } = await readResponse(await fetch("/api/admin/products", {
+      const { product } = await readResponse(await adminFetch("/api/admin/products", {
         method: editor?.product ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       }));
       setData((current) => current && ({ ...current, products: editor?.product ? current.products.map((row) => row.id === product.id ? product : row) : [product, ...current.products] }));
@@ -69,7 +72,7 @@ export function ProductDirectory() {
     if (!deleting) return;
     setPending(true); setDeleteError("");
     try {
-      await readResponse(await fetch("/api/admin/products", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: deleting.id }) }));
+      await readResponse(await adminFetch("/api/admin/products", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: deleting.id }) }));
       setData((current) => current && ({ ...current, products: current.products.filter((product) => product.id !== deleting.id) }));
       setDeleting(null); router.refresh();
       showFeedback({ title: "ลบสินค้าแล้ว", description: "นำสินค้าออกจากหน้าร้านเรียบร้อยแล้ว" });

@@ -1,16 +1,14 @@
 "use client";
 
 import { Button, Checkbox, CheckboxGroup, Label, Separator, Slider } from "@heroui/react";
-import { useCatalog } from "@/components/catalog-provider";
+import { useState } from "react";
+import { useCatalogMeta } from "@/components/catalog-provider";
 import { PRICE_MIN } from "@/lib/catalog";
+import type { CatalogPanel } from "@/lib/catalog-query";
 import { formatBaht } from "@/lib/format";
-import { filterProducts, type CatalogFilters } from "@/lib/search";
-import { facetOptions, facetsForCategory, pruneSpecs } from "@/lib/spec-filters";
+import type { CatalogFilters } from "@/lib/search";
+import { pruneSpecs } from "@/lib/spec-filters";
 import type { CategorySlug } from "@/lib/types";
-
-export function defaultFilters(priceMax: number): CatalogFilters {
-  return { categories: [], brands: [], price: [PRICE_MIN, priceMax], inStockOnly: false, onSaleOnly: false, specs: {} };
-}
 
 function FilterCheckbox({ value, label, count, dim }: { value: string; label: string; count?: number; dim?: boolean }) {
   return (
@@ -35,41 +33,28 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
+/** Counts, brands and spec options come from the server (see lib/catalog-query.ts) for the current filters. */
 export function FilterPanel({
   filters,
+  panel,
   onChange,
   onReset,
 }: {
   filters: CatalogFilters;
+  panel: CatalogPanel;
   onChange: (f: CatalogFilters) => void;
   onReset: () => void;
 }) {
-  const { products, categories, categoryMap, categoryCounts, priceMax, brandsForCategories } = useCatalog();
+  const { categories, categoryMap } = useCatalogMeta();
+  const { categoryCounts, priceMax, brands: availableBrands, specGroups } = panel;
   const set = <K extends keyof CatalogFilters>(key: K, value: CatalogFilters[K]) => onChange({ ...filters, [key]: value });
-  const availableBrands = brandsForCategories(filters.categories);
+  // While a thumb is dragged the range is only shown here; the listing updates once on release.
+  const [draggedPrice, setDraggedPrice] = useState<[number, number] | null>(null);
 
-  // Changing categories drops any selected brand that no longer has products in the new scope.
+  // Brands that have no products in the new categories are dropped by the server when it reads the URL.
   const setCategories = (next: CategorySlug[]) => {
-    const allowed = new Set(brandsForCategories(next).map((b) => b.brand));
-    onChange({
-      ...filters,
-      categories: next,
-      brands: filters.brands.filter((b) => allowed.has(b)),
-      specs: pruneSpecs(filters.specs, next),
-    });
+    onChange({ ...filters, categories: next, specs: pruneSpecs(filters.specs, next) });
   };
-
-  // Sub-filters for each selected category; a facet with a single value can't narrow anything, so it's hidden.
-  const specGroups = filters.categories.flatMap((slug) => {
-    const facets = facetsForCategory(slug)
-      .map((facet) => {
-        const { [facet.key]: _omit, ...otherSpecs } = filters.specs; // eslint-disable-line @typescript-eslint/no-unused-vars
-        const scoped = filterProducts(products, { ...filters, specs: otherSpecs });
-        return { facet, options: facetOptions(facet, products, scoped) };
-      })
-      .filter(({ facet, options }) => options.length > 1 || (filters.specs[facet.key]?.length ?? 0) > 0);
-    return facets.length ? [{ slug, facets }] : [];
-  });
   const setSpec = (key: string, values: string[]) => {
     const { [key]: _omit, ...rest } = filters.specs; // eslint-disable-line @typescript-eslint/no-unused-vars
     onChange({ ...filters, specs: values.length ? { ...rest, [key]: values } : rest });
@@ -103,12 +88,12 @@ export function FilterPanel({
           {filters.categories.length > 1 && (
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">สเปก{categoryMap.get(slug)?.nameTh ?? slug}</p>
           )}
-          {facets.map(({ facet, options }) => (
-            <Group key={facet.key} title={facet.title}>
+          {facets.map(({ key, title, options }) => (
+            <Group key={key} title={title}>
               <CheckboxGroup
-                aria-label={facet.title}
-                value={filters.specs[facet.key] ?? []}
-                onChange={(v) => setSpec(facet.key, v)}
+                aria-label={title}
+                value={filters.specs[key] ?? []}
+                onChange={(v) => setSpec(key, v)}
                 className="gap-2.5"
               >
                 {options.map((o) => (
@@ -138,8 +123,12 @@ export function FilterPanel({
           minValue={PRICE_MIN}
           maxValue={priceMax}
           step={500}
-          value={filters.price}
-          onChange={(v) => set("price", v as [number, number])}
+          value={draggedPrice ?? filters.price}
+          onChange={(v) => setDraggedPrice(v as [number, number])}
+          onChangeEnd={(v) => {
+            setDraggedPrice(null);
+            set("price", v as [number, number]);
+          }}
           className="px-1"
         >
           <Slider.Track>
@@ -149,9 +138,9 @@ export function FilterPanel({
           </Slider.Track>
         </Slider>
         <div className="flex items-center justify-between gap-2 text-sm">
-          <span className="rounded-lg border border-border bg-surface px-2.5 py-1 tabular-nums">{formatBaht(filters.price[0])}</span>
+          <span className="rounded-lg border border-border bg-surface px-2.5 py-1 tabular-nums">{formatBaht((draggedPrice ?? filters.price)[0])}</span>
           <span className="text-muted">—</span>
-          <span className="rounded-lg border border-border bg-surface px-2.5 py-1 tabular-nums">{formatBaht(filters.price[1])}</span>
+          <span className="rounded-lg border border-border bg-surface px-2.5 py-1 tabular-nums">{formatBaht((draggedPrice ?? filters.price)[1])}</span>
         </div>
       </Group>
 

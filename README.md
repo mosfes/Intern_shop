@@ -117,7 +117,7 @@ npm run db:push
 
 ตั้งค่า `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `AUTH_URL` และ `AUTH_SECRET` ใน `.env` ตาม `.env.example` โดยสร้าง secret ด้วย `openssl rand -base64 32` และเริ่ม dev server ใหม่ สำหรับ production ใช้ `AUTH_URL` เป็น HTTPS origin ของเว็บไซต์และลงทะเบียน callback URL ของโดเมนนั้นกับ Google ให้ตรงกัน
 
-ผู้ใช้ Google จะถูกบันทึกใน `ShopUser` และได้รับ session ใน HttpOnly cookie เป็นเวลา 7 วัน แอดมินจะเข้า `/admin` ส่วนบัญชีที่ไม่มีรายการ `active = true` ใน `AdminCredential` จะเป็นลูกค้าและเข้า `/profile` คำสั่งซื้อยังเก็บในเบราว์เซอร์ แอดมินเข้าสู่ระบบด้วยชื่อผู้ใช้และรหัสผ่านผ่าน `POST /api/auth/password` ได้ด้วย ส่วนฟอร์มสมัครสมาชิกด้วยรหัสผ่านของลูกค้ายังเป็นเดโม
+ผู้ใช้ Google จะถูกบันทึกใน `ShopUser` และได้รับ session ใน HttpOnly cookie เป็นเวลา 7 วัน แอดมินจะเข้า `/admin` ส่วนบัญชีที่ไม่มีรายการ `active = true` ใน `AdminCredential` จะเป็นลูกค้าและเข้า `/profile` คำสั่งซื้อยังเก็บในเบราว์เซอร์ แอดมินเข้าสู่ระบบด้วยชื่อผู้ใช้และรหัสผ่านผ่าน `POST /api/auth/password` ได้ด้วย ลูกค้าสมัครด้วยอีเมลและรหัสผ่านได้ โดยต้องยืนยัน OTP ที่ส่งทางอีเมลก่อนสร้างบัญชี และเข้าสู่ระบบด้วยอีเมลกับรหัสผ่าน
 
 ตั้งค่าชื่อผู้ใช้และรหัสผ่านที่ `/admin` → จัดการผู้ใช้ → แอดมิน → แก้ไขบัญชี สำหรับ `mosfes3@gmail.com` ให้เข้า Google ครั้งแรกเพื่อตั้งค่าเอง แอดมินใหม่กำหนดชื่อผู้ใช้และรหัสผ่านได้ในกล่องเพิ่มแอดมิน โดยไม่ต้องล็อกอิน Google ก่อน ชื่อผู้ใช้เป็นอักษรอังกฤษ/ตัวเลข/จุด/ขีดกลาง/ขีดล่าง 3–64 ตัว ไม่แยกตัวพิมพ์ใหญ่เล็ก รหัสผ่าน 12–128 ตัว เก็บแฮช scrypt พร้อม salt เฉพาะบัญชีใน `AdminCredential` และไม่ส่งแฮชกลับทาง API
 
@@ -126,6 +126,8 @@ npm run db:push
 `AdminCredential` เป็นแหล่งตรวจสิทธิ์แอดมินเพียงตารางเดียว แอดมิน Google เดิมที่ยังไม่ได้ตั้งรหัสผ่านจะมี `username` และ `passwordHash` เป็น `NULL` และยังใช้ Google ได้ เมื่อถอดสิทธิ์จะตั้ง `active = false` ล้างชื่อผู้ใช้/แฮชรหัสผ่าน และเพิ่ม `version` เพื่อไม่ให้เซสชันเก่ากลับมาใช้ได้หากเพิ่มเป็นแอดมินอีกครั้ง
 
 สำหรับฐานข้อมูลรุ่นเก่าที่มี `AdminEmail` ให้รัน `npm run db:migrate-admins` เพื่อย้ายข้อมูลโดยคงรหัสผ่านเดิม หลังอัปเดตแอปและตรวจสอบแล้วรัน `npm run db:migrate-admins -- --drop-legacy` เพื่อตรวจว่าทุกรายชื่อย้ายครบก่อนลบตารางเดิม อย่ารัน `db:push` เพื่อลบตารางเก่าก่อนย้ายข้อมูล
+
+สำหรับ OTP ให้ตั้ง `RESEND_API_KEY` และ `RESEND_FROM` ด้วยโดเมนผู้ส่งที่ยืนยันใน Resend แล้ว รหัสมีอายุ 10 นาทีและลองยืนยันได้ไม่เกิน 5 ครั้ง
 
 สร้างตารางด้วย `npm run db:push` หรือ `npm run db:setup-accounts` ซึ่งสร้างเฉพาะตารางบัญชีที่ยังไม่มีผ่าน driver โดยตรง จากนั้นรัน `npm run db:seed-admin` **ครั้งเดียวตอนตั้งค่าเริ่มต้น** เพื่อเพิ่ม `mosfes3@gmail.com` ก่อนล็อกอิน ห้ามผูก seed กับ startup หรือ callback เพราะจะเพิ่มสิทธิ์กลับหลังถูกถอด
 
@@ -191,3 +193,12 @@ Successful admin sign-ins (password and Google) and explicit sign-outs are also 
 Admin logs also capture IP, User-Agent and approximate country/region/city when supplied by a trusted hosting proxy. Re-run `npm run db:setup-admin-logs` to add nullable columns to existing installations; old entries remain intact with unknown context. Restart the dev server after regenerating Prisma.
 Vercel is detected through `VERCEL=1`. For Cloudflare, set `ADMIN_LOG_PROXY=cloudflare`, restrict direct access to the origin, and enable its Add visitor location headers transform for city/region. A custom protected reverse proxy can use `ADMIN_LOG_PROXY=proxy` and must overwrite `X-Real-IP`; location remains unknown in this mode. `ADMIN_LOG_PROXY=none` disables proxy metadata. Local development without a trusted proxy shows unknown IP/location. User-Agent descriptions are client-reported, and IP location is approximate (VPN/mobile networks can differ). No external geolocation service receives admin IPs.
 Header references: [Vercel](https://vercel.com/docs/headers/request-headers), [Cloudflare](https://developers.cloudflare.com/fundamentals/reference/http-headers/).
+
+### Order notification emails
+
+Paid orders and fulfilment or tracking updates enqueue an email to the customer's account email. Each email includes a printable PDF purchase-order attachment (not a tax invoice). Internal admin notes are excluded. Email provider failures do not undo a completed order update; queued messages can be retried.
+
+1. Run `npm run db:setup-order-emails` against the target database before enabling email.
+2. Set `RESEND_API_KEY` and `RESEND_FROM` on the server. The sender domain must be verified in Resend. Never expose the key in browser code.
+3. Set a long random `CRON_SECRET` and configure a scheduler to call `GET /api/internal/order-emails` with `Authorization: Bearer <CRON_SECRET>`. Schedule it frequently enough for the desired retry time. The endpoint handles up to 20 messages per invocation. Monitor errors and the `OrderEmail` table. Resend idempotency keys expire after 24 hours, so an uncertain delivery retried after that window can be duplicated.
+4. Configure the same variables and scheduler in the production hosting environment. Messages are queued only while both Resend variables are configured; enabling email later does not backfill older orders.

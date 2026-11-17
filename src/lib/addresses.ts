@@ -29,6 +29,15 @@ const text = (value: unknown, max: number, field: string, required = true) => {
   return trimmed;
 };
 
+/** Contact details are required for both delivery and store pickup. */
+export function validateContact(body: unknown): { fullName: string; phone: string } {
+  if (!body || typeof body !== "object") throw new AddressError("body");
+  const b = body as Record<string, unknown>;
+  const phone = text(b.phone, 30, "phone");
+  if (!/^[0-9\- ]{9,12}$/.test(phone)) throw new AddressError("phone");
+  return { fullName: text(b.fullName, 255, "fullName"), phone };
+}
+
 /** Checks a request body and returns clean values; throws AddressError naming the bad field. */
 export function validateAddress(body: unknown): AddressInput {
   if (!body || typeof body !== "object") throw new AddressError("body");
@@ -42,12 +51,10 @@ export function validateAddress(body: unknown): AddressInput {
   const locality = area.subdistricts.find((item) => item.name === subdistrict);
   if (!locality) throw new AddressError("subdistrict");
   if (locality.postcode !== postcode) throw new AddressError("postcode");
-  const phone = text(b.phone, 30, "phone");
-  if (!/^[0-9\- ]{9,12}$/.test(phone)) throw new AddressError("phone");
+  const contact = validateContact(body);
   return {
     label: text(b.label, 60, "label", false),
-    fullName: text(b.fullName, 255, "fullName"),
-    phone,
+    ...contact,
     address: text(b.address, 500, "address"),
     province,
     district,

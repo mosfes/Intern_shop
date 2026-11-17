@@ -3,7 +3,7 @@
  * Only a fixed allow-list of internal paths is ever stored or followed (no open redirects).
  */
 const STORAGE_KEY = "edm-post-login-path";
-const ALLOWED_PATHS = new Set(["/checkout"]);
+const ALLOWED_PATHS = new Set(["/checkout", "/orders"]);
 
 /** Where to send a signed-out shopper who tries to check out. */
 export const CHECKOUT_LOGIN_HREF = `/login?next=${encodeURIComponent("/checkout")}`;

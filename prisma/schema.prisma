@@ -345,3 +345,34 @@ model FlashSaleItem {
   price     Decimal  @db.Decimal(12, 2)
   updatedAt DateTime @updatedAt
 }
+
+// Transactional order emails, stored alongside the order update for safe retries.
+model OrderEmail {
+  id        String   @id @db.VarChar(191)
+  recipient String   @db.VarChar(191)
+  order     Json
+  event     String   @db.VarChar(30)
+  state     String   @default("pending") @db.VarChar(20)
+  attempts  Int      @default(0)
+  lockedAt  DateTime?
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([state, createdAt])
+}
+
+model CustomerCredential {
+  email String @id @db.VarChar(191)
+  passwordHash String @db.VarChar(255)
+  version Int @default(1)
+}
+
+model PendingRegistration {
+  email String @id @db.VarChar(191)
+  name String @db.VarChar(255)
+  phone String @db.VarChar(30)
+  passwordHash String @db.VarChar(255)
+  codeHash String @db.VarChar(64)
+  attempts Int @default(0)
+  expiresAt DateTime
+}

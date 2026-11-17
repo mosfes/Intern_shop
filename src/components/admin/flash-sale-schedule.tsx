@@ -1,5 +1,7 @@
 "use client";
 
+import { useAdminFetch } from "./admin-data";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFeedback } from "@/components/feedback-provider";
@@ -13,6 +15,7 @@ async function read(response: Response): Promise<{ settings: FlashSaleSettings }
   return result;
 }
 export function FlashSaleSchedule() {
+  const adminFetch = useAdminFetch("flash-sale");
   const router = useRouter(); const feedback = useFeedback();
   const [enabled, setEnabled] = useState(true);
   const [startsAt, setStartsAt] = useState(""); const [endsAt, setEndsAt] = useState("");
@@ -23,17 +26,17 @@ export function FlashSaleSchedule() {
     async function load() {
       setError("");
       try {
-        const { settings } = await read(await fetch("/api/admin/flash-sale", { cache: "no-store", signal: controller.signal }));
+        const { settings } = await read(await adminFetch("/api/admin/flash-sale", { cache: "no-store", signal: controller.signal }));
         if (!controller.signal.aborted) { setEnabled(settings.enabled); setStartsAt(bangkokDateInput(settings.startsAt)); setEndsAt(bangkokDateInput(settings.endsAt)); setLoaded(true); }
       } catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "โหลดเวลาไม่สำเร็จ"); }
     }
     void load(); return () => controller.abort();
-  }, [revision]);
+  }, [revision, adminFetch]);
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setPending(true); setError("");
     try {
       const settings = validateFlashSaleSettings({ enabled, startsAt: bangkokInputToISO(startsAt), endsAt: bangkokInputToISO(endsAt) });
-      await read(await fetch("/api/admin/flash-sale", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings) }));
+      await read(await adminFetch("/api/admin/flash-sale", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings) }));
       router.refresh(); feedback({ title: "บันทึกเวลาแฟลชเซลแล้ว", description: "หน้าร้านจะเปิดและปิดตามเวลาที่ตั้งไว้" });
     } catch (cause) { setError(cause instanceof Error ? cause.message : "บันทึกเวลาไม่สำเร็จ"); }
     finally { setPending(false); }

@@ -18,6 +18,7 @@ import {
   toast,
 } from "@heroui/react";
 import { useFeedback } from "@/components/feedback-provider";
+import { savePendingPayment } from "@/lib/pending-payment";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,6 +34,7 @@ import {
   LogoutIcon,
   MapPinIcon,
   PackageIcon,
+  PrinterIcon,
   QrIcon,
   TruckIcon,
   UserIcon,
@@ -47,6 +49,7 @@ import { AdminOrderNotice } from "@/components/account/admin-order-notice";
 import { AddressBook } from "@/components/account/address-book";
 import { AdminTwoFactor } from "@/components/account/admin-two-factor";
 import { storeActions, useHydrated, useIsAdmin, useStore } from "@/lib/store";
+import { REGISTRATION_OPEN } from "@/lib/registration";
 import type { Order, OrderStatus } from "@/lib/types";
 
 function Empty({ icon, title, text, action }: { icon: ReactNode; title: string; text: string; action: ReactNode }) {
@@ -126,7 +129,8 @@ export function WishlistView() {
 }
 
 // ---------------------------------------------------------------- orders
-const statusMap: Record<OrderStatus, { label: string; color: "accent" | "warning" | "success" | "danger"; icon: typeof PackageIcon }> = {
+const statusMap: Record<OrderStatus | "unpaid", { label: string; color: "accent" | "warning" | "success" | "danger"; icon: typeof PackageIcon }> = {
+  unpaid: { label: "รอชำระเงิน", color: "warning", icon: QrIcon },
   processing: { label: "กำลังเตรียมสินค้า", color: "warning", icon: PackageIcon },
   shipped: { label: "กำลังจัดส่ง", color: "accent", icon: TruckIcon },
   delivered: { label: "จัดส่งสำเร็จ", color: "success", icon: CheckCircleIcon },
@@ -140,18 +144,21 @@ function paymentIcon(label: string) {
   return CreditCardIcon;
 }
 
+const orderDisplayStatus = (order: Order): OrderStatus | "unpaid" => order.paymentStatus === "pending" ? "unpaid" : order.status;
+
 const ORDERS_PER_PAGE = 10;
 
 export function OrdersView() {
   const hydrated = useHydrated();
+  const user = useStore((s) => s.user);
   const orders = useStore((s) => s.orders);
   const isAdmin = useIsAdmin();
-  const [status, setStatus] = useState<OrderStatus | "all">("all");
+  const [status, setStatus] = useState<OrderStatus | "unpaid" | "all">("all");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedOrder = orders.find((order) => order.id === selectedId);
   const filteredOrders = orders
-    .filter((order) => status === "all" || order.status === status)
+    .filter((order) => status === "all" || orderDisplayStatus(order) === status)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
@@ -166,6 +173,16 @@ export function OrdersView() {
   }, []);
   if (!hydrated) return <Skeleton className="h-48 rounded-xl" />;
   if (isAdmin) return <AdminOrderNotice />;
+  if (!user) {
+    return (
+      <Empty
+        icon={<PackageIcon size={30} />}
+        title="กรุณาเข้าสู่ระบบ"
+        text="เข้าสู่ระบบเพื่อดูและติดตามคำสั่งซื้อของคุณ"
+        action={<Link href="/login?next=%2Forders" className={buttonVariants({ size: "lg" })}>เข้าสู่ระบบ</Link>}
+      />
+    );
+  }
   if (orders.length === 0) {
     return (
       <Empty
@@ -181,8 +198,8 @@ export function OrdersView() {
       <section aria-label="รายการคำสั่งซื้อ" className="overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--surface-shadow)]">
         <div className="overflow-x-auto border-b border-border px-4 sm:px-6">
           <div className="flex min-w-max gap-5 sm:gap-8" role="group" aria-label="กรองคำสั่งซื้อตามสถานะ">
-            {(["all", ...STEPS, ...(orders.some((order) => order.status === "cancelled") ? ["cancelled" as const] : [])] as const).map((value) => {
-              const count = value === "all" ? orders.length : orders.filter((order) => order.status === value).length;
+            {(["all", "unpaid", ...STEPS, ...(orders.some((order) => order.status === "cancelled") ? ["cancelled" as const] : [])] as const).map((value) => {
+              const count = value === "all" ? orders.length : orders.filter((order) => orderDisplayStatus(order) === value).length;
               const active = status === value;
               return (
                 <button key={value} type="button" aria-pressed={active}
@@ -212,7 +229,8 @@ export function OrdersView() {
             </div>
             <ul className="divide-y divide-border">
               {visibleOrders.map((order) => {
-                const state = statusMap[order.status];
+                const displayStatus = orderDisplayStatus(order);
+                const state = statusMap[displayStatus];
                 const itemCount = order.lines.reduce((sum, line) => sum + line.quantity, 0);
                 const firstLine = order.lines[0];
                 return (
@@ -234,7 +252,7 @@ export function OrdersView() {
                         </div>
                       </div>
                       <div className="min-w-0">
-                        <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${order.status === "processing" ? "bg-warning-soft text-warning" : order.status === "delivered" ? "bg-success-soft text-success" : order.status === "cancelled" ? "bg-danger-soft text-danger" : "bg-accent-soft text-accent"}`}>
+                        <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${(displayStatus === "unpaid" || displayStatus === "processing") ? "bg-warning-soft text-warning" : order.status === "delivered" ? "bg-success-soft text-success" : order.status === "cancelled" ? "bg-danger-soft text-danger" : "bg-accent-soft text-accent"}`}>
                           <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-current" />{state.label}
                         </span>
                       </div>
@@ -270,6 +288,9 @@ export function OrdersView() {
               {selectedOrder && <OrderDetails order={selectedOrder} />}
             </Modal.Body>
             <Modal.Footer className="border-t border-border px-5 py-3">
+              {selectedOrder?.paymentStatus === "pending" && selectedOrder.chargeId && <Link href="/checkout/complete" onClick={() => savePendingPayment({ chargeId: selectedOrder.chargeId!, order: selectedOrder })} className={buttonVariants()}>ชำระเงิน</Link>}
+              {selectedOrder && <a href={`/orders/${encodeURIComponent(selectedOrder.id)}/document`} target="_blank" rel="noopener"
+                className={buttonVariants({ variant: "secondary" })}><PrinterIcon size={16} />ใบสั่งซื้อ</a>}
               <Button variant="secondary" onPress={() => setSelectedId(null)}>ปิด</Button>
             </Modal.Footer>
           </Modal.Dialog>
@@ -281,7 +302,7 @@ export function OrdersView() {
 
 function OrderDetails({ order: o }: { order: Order }) {
   const { productMap } = useCatalog();
-  const s = statusMap[o.status];
+  const s = statusMap[orderDisplayStatus(o)];
   const StatusIcon = s.icon;
   const PayIcon = paymentIcon(o.paymentMethod);
   const itemCount = o.lines.reduce((n, l) => n + l.quantity, 0);
@@ -310,6 +331,8 @@ function OrderDetails({ order: o }: { order: Order }) {
               {s.label}
             </span>
           </Chip>
+          <a href={`/orders/${encodeURIComponent(o.id)}/document`} target="_blank" rel="noopener"
+            className={buttonVariants({ size: "sm" })}><PrinterIcon size={15} />ออกใบสั่งซื้อ</a>
         </div>
       </div>
 
@@ -322,7 +345,9 @@ function OrderDetails({ order: o }: { order: Order }) {
       )}
 
       {/* progress stepper */}
-      {o.status === "cancelled" ? (
+      {o.paymentStatus === "pending" ? (
+        <p role="status" className="mx-5 my-5 rounded-lg bg-warning-soft p-4 text-sm text-warning sm:mx-6">คำสั่งซื้อนี้รอชำระเงิน ร้านค้าจะเตรียมสินค้าเมื่อชำระเงินสำเร็จ</p>
+      ) : o.status === "cancelled" ? (
         <p role="status" className="mx-5 my-5 rounded-lg bg-danger-soft p-4 text-sm text-danger sm:mx-6">คำสั่งซื้อนี้ถูกยกเลิกโดยร้านค้า หากมีข้อสงสัยเรื่องการคืนเงิน กรุณาติดต่อร้าน</p>
       ) : <ol className="relative grid grid-cols-3 px-5 pb-5 pt-6 sm:px-6" aria-label="สถานะการจัดส่ง">
         {STEPS.map((st, i) => {
@@ -458,9 +483,11 @@ export function ProfileView() {
             <Link href="/login" className={buttonVariants({ size: "lg" })}>
               เข้าสู่ระบบ
             </Link>
-            <Link href="/register" className={buttonVariants({ size: "lg", variant: "secondary" })}>
-              สมัครสมาชิก
-            </Link>
+            {REGISTRATION_OPEN && (
+              <Link href="/register" className={buttonVariants({ size: "lg", variant: "secondary" })}>
+                สมัครสมาชิก
+              </Link>
+            )}
           </div>
         }
       />

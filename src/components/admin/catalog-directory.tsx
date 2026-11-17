@@ -1,5 +1,7 @@
 "use client";
 
+import { useAdminDataState, useAdminFetch } from "./admin-data";
+
 import { Modal } from "@heroui/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -22,8 +24,9 @@ async function read(response: Response) {
 }
 
 export function CatalogDirectory({ kind }: { kind: CatalogKind }) {
+  const adminFetch = useAdminFetch("catalog");
   const router = useRouter(); const feedback = useFeedback();
-  const [data, setData] = useState<Directory | null>(null);
+  const [data, setData] = useAdminDataState<Directory>("catalog");
   const [error, setError] = useState(""); const [pending, setPending] = useState(false);
   const [query, setQuery] = useState(""); const [page, setPage] = useState(1);
   const [editor, setEditor] = useState<{ record: CatalogRecord | null } | null>(null);
@@ -31,15 +34,15 @@ export function CatalogDirectory({ kind }: { kind: CatalogKind }) {
   const categories = kind === "category"; const title = categories ? "หมวดหมู่" : "แบรนด์";
   const refresh = useCallback(async () => {
     setError("");
-    try { setData(await read(await fetch("/api/admin/catalog", { cache: "no-store" }))); }
+    try { setData(await read(await adminFetch("/api/admin/catalog", { cache: "no-store" }))); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "โหลดข้อมูลไม่สำเร็จ"); }
-  }, []);
+  }, [adminFetch, setData]);
   useEffect(() => { const timer = window.setTimeout(() => { void refresh(); }, 0); return () => window.clearTimeout(timer); }, [refresh]);
 
   async function save(body: Record<string, unknown>): Promise<string | null> {
     setPending(true);
     try {
-      const { record } = await read(await fetch("/api/admin/catalog", { method: editor?.record ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
+      const { record } = await read(await adminFetch("/api/admin/catalog", { method: editor?.record ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
       setData((current) => current && (categories ? { ...current, categories: [...current.categories.filter((row) => row.id !== record.id), record] } : { ...current, brands: [...current.brands.filter((row) => row.id !== record.id), record] }));
       router.refresh(); feedback({ title: "บันทึกข้อมูลแล้ว", description: `อัปเดต${title}เรียบร้อยแล้ว` }); return null;
     } catch (cause) { return cause instanceof Error ? cause.message : "บันทึกไม่สำเร็จ"; }
@@ -48,7 +51,7 @@ export function CatalogDirectory({ kind }: { kind: CatalogKind }) {
   async function remove() {
     if (!deleting) return; setPending(true); setDeleteError("");
     try {
-      await read(await fetch("/api/admin/catalog", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, id: deleting.id }) }));
+      await read(await adminFetch("/api/admin/catalog", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, id: deleting.id }) }));
       setData((current) => current && (categories ? { ...current, categories: current.categories.filter((row) => row.id !== deleting.id) } : { ...current, brands: current.brands.filter((row) => row.id !== deleting.id) }));
       setDeleting(null); router.refresh(); feedback({ title: "ลบข้อมูลแล้ว", description: `นำ${title}ออกจากรายการเรียบร้อยแล้ว` });
     } catch (cause) { setDeleteError(cause instanceof Error ? cause.message : "ลบไม่สำเร็จ"); }

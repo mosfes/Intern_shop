@@ -1,5 +1,7 @@
 "use client";
 
+import { useAdminDataState, useAdminFetch } from "./admin-data";
+
 import { Chip, Modal } from "@heroui/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,6 +11,7 @@ import { ChevronDownIcon, EditIcon, EyeIcon, PlusIcon, TrashIcon } from "@/compo
 import { useFeedback } from "@/components/feedback-provider";
 import { PROMOTION_PLACEMENTS, PROMOTION_VISIBLE, type Promotion, type PromotionPlacement } from "@/lib/promotions";
 import { catalogPrimary } from "./catalog-editor";
+import { AdminLinkCatalog } from "./admin-link-catalog";
 import { PromotionEditor } from "./promotion-editor";
 import { AdminContentSkeleton } from "./admin-skeleton";
 import { AdminPageHeader } from "./user-directory";
@@ -19,20 +22,21 @@ async function read(response: Response) {
   if (!response.ok) throw new Error(result.error || "ดำเนินการไม่สำเร็จ กรุณาลองอีกครั้ง");
   return result;
 }
-const send = (method: string, body: unknown) => fetch("/api/admin/promotions", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(read);
 
 export function PromotionDirectory() {
+  const adminFetch = useAdminFetch("promotions");
+  const send = (method: string, body: unknown) => adminFetch("/api/admin/promotions", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(read);
   const router = useRouter(); const feedback = useFeedback();
-  const [rows, setRows] = useState<Promotion[] | null>(null);
+  const [rows, setRows] = useAdminDataState<Promotion[]>("promotions");
   const [error, setError] = useState(""); const [pending, setPending] = useState(false);
   const [editor, setEditor] = useState<{ promotion: Promotion | null; placement: PromotionPlacement } | null>(null);
   const [deleting, setDeleting] = useState<Promotion | null>(null); const [deleteError, setDeleteError] = useState("");
 
   const refresh = useCallback(async () => {
     setError("");
-    try { setRows((await read(await fetch("/api/admin/promotions", { cache: "no-store" }))).promotions); }
+    try { setRows((await read(await adminFetch("/api/admin/promotions", { cache: "no-store" }))).promotions); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "โหลดข้อมูลไม่สำเร็จ"); }
-  }, []);
+  }, [adminFetch, setRows]);
   useEffect(() => { const timer = window.setTimeout(() => { void refresh(); }, 0); return () => window.clearTimeout(timer); }, [refresh]);
 
   async function run(work: () => Promise<void>, failure = "ดำเนินการไม่สำเร็จ") {
@@ -98,7 +102,7 @@ export function PromotionDirectory() {
         </li>)}</ol>}
       </section>;
     })}
-    {editor && <PromotionEditor promotion={editor.promotion} placement={editor.placement} pending={pending} onSave={save} onClose={() => setEditor(null)} />}
+    {editor && <AdminLinkCatalog onClose={() => setEditor(null)}><PromotionEditor promotion={editor.promotion} placement={editor.placement} pending={pending} onSave={save} onClose={() => setEditor(null)} /></AdminLinkCatalog>}
     <Modal.Backdrop isOpen={!!deleting} onOpenChange={(open) => { if (!open && !pending) setDeleting(null); }}><Modal.Container size="sm" placement="center"><Modal.Dialog className="rounded-2xl bg-overlay p-0 text-foreground"><Modal.CloseTrigger isDisabled={pending} /><Modal.Header className="px-6 pt-6"><Modal.Heading>ลบโปรโมชัน</Modal.Heading></Modal.Header><Modal.Body className="px-6 py-4"><p className="break-words text-sm">ต้องการลบ <strong>{deleting?.title}</strong> หรือไม่?</p><p className="mt-2 text-xs text-muted">หากต้องการซ่อนชั่วคราว ให้ปิดสวิตช์แสดงผลแทน</p>{deleteError && <p role="alert" className="mt-3 text-sm text-danger">{deleteError}</p>}</Modal.Body><Modal.Footer className="flex justify-end gap-4 border-t border-border px-6 py-4"><button type="button" disabled={pending} onClick={() => setDeleting(null)} className="text-sm text-muted">ยกเลิก</button><button type="button" disabled={pending} onClick={() => void remove()} className="rounded-lg bg-danger px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{pending ? "กำลังลบ…" : "ยืนยันลบ"}</button></Modal.Footer></Modal.Dialog></Modal.Container></Modal.Backdrop>
   </div>;
 }

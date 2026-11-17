@@ -4,7 +4,7 @@ import { SiteChrome } from "@/components/layout/site-chrome";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Providers, themeInitScript } from "@/components/providers";
-import { getCatalogData } from "@/lib/catalog-server";
+import { getCatalogMeta } from "@/lib/catalog-server";
 import "./globals.css";
 
 const kanit = Kanit({
@@ -29,8 +29,7 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Only categories/brands/logos go to the browser here; product-heavy routes add <CatalogProducts>.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { products, ...catalog } = await getCatalogData();
+  const catalog = await getCatalogMeta();
   return (
     <html lang="th" data-scroll-behavior="smooth" suppressHydrationWarning className={`${kanit.variable} h-full`}>
       <head>

@@ -31,7 +31,8 @@
     "r2:check": "tsx scripts/r2-check.ts",
     "r2:upload": "tsx scripts/upload-images-to-r2.ts",
     "mockapi:export": "tsx scripts/export-mockapi-json.ts",
-    "mockapi:push": "tsx scripts/push-to-mockapi.ts"
+    "mockapi:push": "tsx scripts/push-to-mockapi.ts",
+    "db:setup-order-emails": "node --import tsx scripts/setup-order-emails.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1169.0",
@@ -44,6 +45,7 @@
     "jose": "^6.2.17",
     "mariadb": "^3.5.5",
     "next": "16.4.6",
+    "pdfkit": "^0.20.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "sharp": "^0.35.5"
@@ -51,6 +53,7 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^20",
+    "@types/pdfkit": "^0.17.7",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

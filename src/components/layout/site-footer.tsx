@@ -21,13 +21,14 @@ export async function SiteFooter() {
           </p>
           <ul className="space-y-2 text-sm text-muted">
             <li className="flex items-center gap-2">
-              <MapPinIcon size={16} /> 991 ถนนพระราม 1 ปทุมวัน กรุงเทพฯ (ตัวอย่าง)
+              <MapPinIcon size={16} /> 250/92 ซอยรามคำแหง 112 แขวงสะพานสูง เขตสะพานสูง กรุงเทพฯ 10240
             </li>
             <li className="flex items-center gap-2">
               <PhoneIcon size={16} /> 02-000-0000
             </li>
             <li className="flex items-center gap-2">
-              <MailIcon size={16} /> hello@edmpcshop.example
+              {/* The "@" sits in its own span so Cloudflare's email obfuscation doesn't rewrite the text and break hydration. */}
+              <MailIcon size={16} /> <span>hello<span>@</span>edmpcshop.example</span>
             </li>
           </ul>
         </div>

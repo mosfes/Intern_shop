@@ -60,6 +60,7 @@ export function applyOrderUpdate(order: Order, update: OrderUpdate, now = new Da
 export function customerOrder(order: Order): Order {
   const visible = { ...order };
   delete visible.adminNote;
+  delete visible.stockTaken;
   return visible;
 }
 
@@ -67,6 +68,8 @@ export type AdminOrderRow = {
   id: string;
   chargeId: string | null;
   amount: number;
+  /** False while the customer has not paid yet: the order can't be fulfilled, only given a purchase order. */
+  paid: boolean;
   createdAt: string;
   updatedAt: string;
   customer: { id: string; name: string | null; email: string | null; phone: string | null };
@@ -78,5 +81,6 @@ export type AdminOrderList = {
   total: number;
   page: number;
   pageSize: number;
-  counts: Record<OrderStatus | "all", number>;
+  /** `all` counts paid and unpaid orders; `unpaid` counts orders still waiting for payment. */
+  counts: Record<OrderStatus | "all" | "unpaid", number>;
 };

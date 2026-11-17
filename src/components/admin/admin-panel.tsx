@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { BoltIcon, ChevronRightIcon, PackageIcon, ShieldIcon, TagIcon, TruckIcon, UserIcon } from "@/components/icons";
 import { AdminShell, type AdminIdentity, type AdminSection } from "./admin-shell";
+import type { AdminOrderList } from "@/lib/admin-orders";
 import { storeActions } from "@/lib/store";
 import { useFeedback } from "@/components/feedback-provider";
 import { Avatar, Chip } from "@heroui/react";
 
+import { AdminDataProvider, useAdminDataState, useAdminFetch } from "./admin-data";
 import { ActivityDirectory } from "./activity-directory";
 import { OrderDirectory } from "./order-directory";
 import { ProductDirectory } from "./product-directory";
@@ -20,7 +22,13 @@ import { SalesOverview } from "./sales-overview";
 import { AdminPageHeader, UserDirectory, type Directory } from "./user-directory";
 
 export function AdminPanel({ user }: { user: AdminIdentity }) {
-  const [data, setData] = useState<Directory | null>(null);
+  return <AdminDataProvider key={user.email}><AdminPanelContent user={user} /></AdminDataProvider>;
+}
+
+function AdminPanelContent({ user }: { user: AdminIdentity }) {
+  const adminFetch = useAdminFetch("users");
+  const orderCache = useMemo(() => ({ account: user.email, pages: new Map<string, AdminOrderList>() }), [user.email]);
+  const [data, setData] = useAdminDataState<Directory>("users");
   const searchParams = useSearchParams();
   const section = searchParams.get("section");
   const tab: AdminSection = section === "logs" || section === "orders" || section === "customer" || section === "admin" || section === "products" || section === "categories" || section === "brands" || section === "flash-sale" || section === "promotions" || section === "discounts" ? section : "overview";
@@ -37,23 +45,23 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
   }
 
   const refresh = useCallback(async () => {
-    const response = await fetch("/api/admin/users", { cache: "no-store" });
+    const response = await adminFetch("/api/admin/users", { cache: "no-store" });
     const result = await response.json();
     if (response.status === 401 || response.status === 403) { window.location.replace("/auth/complete"); return; }
     if (!response.ok) throw new Error(result.error);
     setData(result);
-  }, []);
+  }, [adminFetch, setData]);
   useEffect(() => { if (tab === "logs" || tab === "orders" || tab === "products" || tab === "categories" || tab === "brands" || tab === "flash-sale" || tab === "promotions" || tab === "discounts") return; const timer = window.setTimeout(() => { void refresh().catch(() => setError("โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง")); }, 0); return () => window.clearTimeout(timer); }, [refresh, tab]);
 
   async function mutate(body: Record<string, unknown>) {
     setPending(true); setError("");
     try {
-      const response = await fetch("/api/admin/users", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const response = await adminFetch("/api/admin/users", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
       // Keep the result visible even when resetting this session's own password.
       if (body.action === "setCredentials" || body.action === "addAdmin") return true;
-      const session = await fetch("/api/auth/session", { cache: "no-store" });
+      const session = await adminFetch("/api/auth/session", { cache: "no-store" });
       if (!session.ok) throw new Error("ตรวจสอบสิทธิ์ไม่สำเร็จ กรุณาโหลดหน้าใหม่");
       const { user } = await session.json();
       storeActions.syncGoogleUser(user);
@@ -67,7 +75,7 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
 
   async function credentialsClosed() {
     try {
-      const response = await fetch("/api/auth/session", { cache: "no-store" });
+      const response = await adminFetch("/api/auth/session", { cache: "no-store" });
       if (!response.ok) throw new Error("ตรวจสอบสิทธิ์ไม่สำเร็จ กรุณาโหลดหน้าใหม่");
       const { user } = await response.json();
       storeActions.syncGoogleUser(user);
@@ -77,7 +85,7 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
   }
 
   if (tab === "logs") return <AdminShell section={tab} onNavigate={navigate} user={user}><ActivityDirectory /></AdminShell>;
-  if (tab === "orders") return <AdminShell section={tab} onNavigate={navigate} user={user}><OrderDirectory /></AdminShell>;
+  if (tab === "orders") return <AdminShell section={tab} onNavigate={navigate} user={user}><OrderDirectory key={orderCache.account} cache={orderCache.pages} /></AdminShell>;
   if (tab === "products") return <AdminShell section={tab} onNavigate={navigate} user={user}><ProductDirectory /></AdminShell>;
   if (tab === "flash-sale") return <AdminShell section={tab} onNavigate={navigate} user={user}><FlashSaleDirectory /></AdminShell>;
   if (tab === "promotions") return <AdminShell section={tab} onNavigate={navigate} user={user}><PromotionDirectory /></AdminShell>;
@@ -88,15 +96,15 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
   return (
     <AdminShell section={tab} onNavigate={navigate} user={user}>
       {tab === "overview" && <AdminPageHeader title="ภาพรวมระบบ" description="ยอดขาย คำสั่งซื้อ สินค้า และบัญชีของร้านในที่เดียว" />}
+      {tab === "overview" && <section className="flex items-center gap-4 rounded-xl border border-border bg-surface p-5 sm:p-6" aria-label="ยินดีต้อนรับ">
+        <Avatar size="lg" color="accent" variant="soft" className="size-14 shrink-0 text-xl">{user.picture && <Avatar.Image src={user.picture} alt="" referrerPolicy="no-referrer" />}<Avatar.Fallback>{user.name.charAt(0).toUpperCase()}</Avatar.Fallback></Avatar>
+        <div className="min-w-0 flex-1"><p className="text-sm text-muted">ยินดีต้อนรับกลับ</p><h2 className="truncate text-xl font-semibold">{user.name}</h2><p className="truncate text-sm text-muted">{user.email}</p></div>
+        <Chip size="sm" color="accent" variant="soft" className="hidden sm:inline-flex">แอดมิน</Chip>
+      </section>}
       {error && <div role="alert" className="rounded-lg bg-danger-soft p-4 text-danger">{error} <button className="underline" onClick={() => refresh().then(() => setError("")).catch(() => setError("โหลดข้อมูลไม่สำเร็จ"))}>ลองใหม่</button></div>}
+      {tab === "overview" && <SalesOverview onNavigate={navigate} />}
       {!data ? (error ? null : <AdminContentSkeleton section={tab} includeHeading={tab !== "overview"} />) : tab === "overview" ? (
         <div className="space-y-6">
-          <section className="flex items-center gap-4 rounded-xl border border-border bg-surface p-5 sm:p-6" aria-label="ยินดีต้อนรับ">
-            <Avatar size="lg" color="accent" variant="soft" className="size-14 shrink-0 text-xl">{user.picture && <Avatar.Image src={user.picture} alt="" referrerPolicy="no-referrer" />}<Avatar.Fallback>{user.name.charAt(0).toUpperCase()}</Avatar.Fallback></Avatar>
-            <div className="min-w-0 flex-1"><p className="text-sm text-muted">ยินดีต้อนรับกลับ</p><h2 className="truncate text-xl font-semibold">{user.name}</h2><p className="truncate text-sm text-muted">{user.email}</p></div>
-            <Chip size="sm" color="accent" variant="soft" className="hidden sm:inline-flex">แอดมิน</Chip>
-          </section>
-          <SalesOverview onNavigate={navigate} />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {([
               { title: "ลูกค้าทั้งหมด", value: customers.length, detail: "ดูและแก้ไขข้อมูลลูกค้า", section: "customer", icon: UserIcon },
