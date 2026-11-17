@@ -7,6 +7,8 @@ export function OrderSummary({
   savings,
   shipping,
   shippingLabel = "ค่าจัดส่ง",
+  discount = 0,
+  discountCode,
   children,
   lines,
 }: {
@@ -14,10 +16,13 @@ export function OrderSummary({
   savings: number;
   shipping: number | null;
   shippingLabel?: string;
+  /** Baht taken off by a discount code. */
+  discount?: number;
+  discountCode?: string;
   children?: ReactNode;
   lines?: ReactNode;
 }) {
-  const total = subtotal + (shipping ?? 0);
+  const total = subtotal - discount + (shipping ?? 0);
   const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
   return (
     <div className="rounded-xl border border-border bg-surface p-5 sm:p-6">
@@ -32,6 +37,12 @@ export function OrderSummary({
           <div className="flex justify-between text-success">
             <dt>ส่วนลด</dt>
             <dd className="tabular-nums">-{formatBaht(savings)}</dd>
+          </div>
+        )}
+        {discount > 0 && (
+          <div className="flex justify-between text-success">
+            <dt>โค้ดส่วนลด{discountCode ? ` (${discountCode})` : ""}</dt>
+            <dd className="tabular-nums">-{formatBaht(discount)}</dd>
           </div>
         )}
         <div className="flex justify-between">

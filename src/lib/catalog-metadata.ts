@@ -8,12 +8,12 @@ export type CatalogDirectory = { brands: CatalogBrand[]; categories: CatalogCate
 export const DEFAULT_CATEGORY_IMAGE = "/images/categories/default.svg";
 export const brandKey = (name: string) => name.trim().normalize("NFKC").toLocaleLowerCase();
 
-type StoredSpecField = { label: string; example: string; compatibility: boolean; powerAdvice: boolean; position: number };
+type StoredSpecField = { label: string; example: string; hint: string; compatibility: boolean; powerAdvice: boolean; position: number };
 
 /** Database rows → plain fields, in the order the admin arranged them. */
 export function toSpecFields(rows: StoredSpecField[] | undefined): CategorySpecField[] {
-  return [...(rows ?? [])].sort((a, b) => a.position - b.position).map(({ label, example, compatibility, powerAdvice }) => ({
-    label, example, ...(compatibility ? { compatibility } : {}), ...(powerAdvice ? { powerAdvice } : {}),
+  return [...(rows ?? [])].sort((a, b) => a.position - b.position).map(({ label, example, hint, compatibility, powerAdvice }) => ({
+    label, example, ...(hint ? { hint } : {}), ...(compatibility ? { compatibility } : {}), ...(powerAdvice ? { powerAdvice } : {}),
   }));
 }
 
@@ -61,16 +61,16 @@ export function validateCatalogMetadata(kind: CatalogKind, body: Record<string, 
 /** `undefined` means "leave the saved defaults alone"; an array replaces them. */
 function specFields(value: unknown): CategorySpecField[] | undefined {
   if (value === undefined) return undefined;
-  const bad = () => new CatalogMetadataError("กรุณาตรวจสอบสเปกเริ่มต้นของหมวดหมู่ (ชื่อสเปกไม่เกิน 120 ตัวอักษร ตัวอย่างไม่เกิน 255 ตัวอักษร)");
+  const bad = () => new CatalogMetadataError("กรุณาตรวจสอบสเปกเริ่มต้นของหมวดหมู่ (ชื่อสเปกไม่เกิน 120 ตัวอักษร ตัวอย่างไม่เกิน 255 ตัวอักษร คำอธิบายไม่เกิน 500 ตัวอักษร)");
   if (!Array.isArray(value) || value.length > MAX_CATEGORY_SPEC_FIELDS) throw bad();
   const seen = new Set<string>();
   return value.map((entry) => {
     if (!entry || typeof entry !== "object") throw bad();
-    const { label, example = "", compatibility, powerAdvice } = entry as Record<string, unknown>;
-    if (typeof label !== "string" || typeof example !== "string" || !label.trim() || label.trim().length > 120 || example.trim().length > 255) throw bad();
+    const { label, example = "", hint = "", compatibility, powerAdvice } = entry as Record<string, unknown>;
+    if (typeof label !== "string" || typeof example !== "string" || typeof hint !== "string" || hint.trim().length > 500 || !label.trim() || label.trim().length > 120 || example.trim().length > 255) throw bad();
     const key = label.trim().toLowerCase();
     if (seen.has(key)) throw new CatalogMetadataError(`ชื่อสเปก “${label.trim()}” ซ้ำกัน กรุณาใช้ชื่อไม่ซ้ำ`);
     seen.add(key);
-    return { label: label.trim(), example: example.trim(), ...(compatibility === true ? { compatibility: true } : {}), ...(powerAdvice === true ? { powerAdvice: true } : {}) };
+    return { label: label.trim(), example: example.trim(), ...(hint.trim() ? { hint: hint.trim() } : {}), ...(compatibility === true ? { compatibility: true } : {}), ...(powerAdvice === true ? { powerAdvice: true } : {}) };
   });
 }

@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS `CategorySpecField` (
     `categoryId` VARCHAR(100) NOT NULL,
     `label` VARCHAR(120) NOT NULL,
     `example` VARCHAR(255) NOT NULL DEFAULT '',
+    `hint` VARCHAR(500) NOT NULL DEFAULT '',
     `compatibility` BOOLEAN NOT NULL DEFAULT false,
     `powerAdvice` BOOLEAN NOT NULL DEFAULT false,
     `position` INTEGER NOT NULL,

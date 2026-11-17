@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { BoltIcon, ChevronRightIcon, PackageIcon, ShieldIcon, UserIcon } from "@/components/icons";
+import { BoltIcon, ChevronRightIcon, PackageIcon, ShieldIcon, TagIcon, UserIcon } from "@/components/icons";
 import { AdminShell, type AdminIdentity, type AdminSection } from "./admin-shell";
 import { storeActions } from "@/lib/store";
 import { useFeedback } from "@/components/feedback-provider";
@@ -11,6 +11,7 @@ import { Avatar, Chip } from "@heroui/react";
 import { ProductDirectory } from "./product-directory";
 import { CatalogDirectory } from "./catalog-directory";
 import { PromotionDirectory } from "./promotion-directory";
+import { DiscountCodeDirectory } from "./discount-code-directory";
 import { AdminContentSkeleton } from "./admin-skeleton";
 import { AdminPageHeader, UserDirectory, type Directory } from "./user-directory";
 
@@ -18,7 +19,7 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
   const [data, setData] = useState<Directory | null>(null);
   const searchParams = useSearchParams();
   const section = searchParams.get("section");
-  const tab: AdminSection = section === "customer" || section === "admin" || section === "products" || section === "categories" || section === "brands" || section === "promotions" ? section : "overview";
+  const tab: AdminSection = section === "customer" || section === "admin" || section === "products" || section === "categories" || section === "brands" || section === "promotions" || section === "discounts" ? section : "overview";
   const [error, setError] = useState("");
   const showFeedback = useFeedback();
   const [pending, setPending] = useState(false);
@@ -38,7 +39,7 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
     if (!response.ok) throw new Error(result.error);
     setData(result);
   }, []);
-  useEffect(() => { if (tab === "products" || tab === "categories" || tab === "brands" || tab === "promotions") return; const timer = window.setTimeout(() => { void refresh().catch(() => setError("โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง")); }, 0); return () => window.clearTimeout(timer); }, [refresh, tab]);
+  useEffect(() => { if (tab === "products" || tab === "categories" || tab === "brands" || tab === "promotions" || tab === "discounts") return; const timer = window.setTimeout(() => { void refresh().catch(() => setError("โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง")); }, 0); return () => window.clearTimeout(timer); }, [refresh, tab]);
 
   async function mutate(body: Record<string, unknown>) {
     setPending(true); setError("");
@@ -73,6 +74,7 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
 
   if (tab === "products") return <AdminShell section={tab} onNavigate={navigate} user={user}><ProductDirectory /></AdminShell>;
   if (tab === "promotions") return <AdminShell section={tab} onNavigate={navigate} user={user}><PromotionDirectory /></AdminShell>;
+  if (tab === "discounts") return <AdminShell section={tab} onNavigate={navigate} user={user}><DiscountCodeDirectory /></AdminShell>;
   if (tab === "categories" || tab === "brands") return <AdminShell section={tab} onNavigate={navigate} user={user}><CatalogDirectory key={tab} kind={tab === "categories" ? "category" : "brand"} /></AdminShell>;
 
   const customers = data?.users.filter((user) => user.role === "customer") ?? [];
@@ -102,6 +104,7 @@ export function AdminPanel({ user }: { user: AdminIdentity }) {
             <section className="rounded-xl border border-border bg-surface p-5 sm:p-6"><h2 className="text-lg font-semibold">ทางลัดการจัดการ</h2><div className="mt-4 space-y-2">{([
               { section: "products", label: "จัดการสินค้า", description: "สินค้า ราคา และจำนวนคงเหลือ", icon: PackageIcon },
               { section: "promotions", label: "จัดการโปรโมชัน", description: "สไลด์ การ์ด และแบนเนอร์หน้าแรก", icon: BoltIcon },
+              { section: "discounts", label: "โค้ดส่วนลด", description: "สร้างโค้ดให้ลูกค้ากรอกตอนชำระเงิน", icon: TagIcon },
               { section: "customer", label: "จัดการลูกค้า", description: "ข้อมูลติดต่อและสถานะบัญชี", icon: UserIcon },
               { section: "admin", label: "จัดการแอดมิน", description: "เพิ่มหรือถอดสิทธิ์ด้วยอีเมล", icon: ShieldIcon },
             ] as const).map((shortcut) => <button key={shortcut.section} onClick={() => navigate(shortcut.section)} className="flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-surface-secondary"><span className="grid size-10 shrink-0 place-items-center rounded-lg bg-surface-secondary text-muted"><shortcut.icon size={20} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-medium">{shortcut.label}</span><span className="mt-1 block text-xs text-muted">{shortcut.description}</span></span><ChevronRightIcon size={16} className="text-muted" /></button>)}</div></section>

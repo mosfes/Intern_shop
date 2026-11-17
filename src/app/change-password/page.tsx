@@ -14,7 +14,7 @@ async function ChangePasswordContent() {
   await connection();
   const user = await sessionUser((await cookies()).get(SESSION_COOKIE)?.value);
   if (!user) redirect("/login");
-  if (!user.mustChangePassword) redirect(user.role === "admin" ? "/admin" : "/profile");
+  if (!user.mustChangePassword) redirect(user.role === "admin" ? "/admin" : "/");
   return <ChangePasswordForm />;
 }
 

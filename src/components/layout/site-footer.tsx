@@ -67,12 +67,11 @@ export async function SiteFooter() {
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-6 text-xs text-muted sm:flex-row sm:px-6">
           <p>
-            © 2026 EDM PC Shop — เว็บไซต์ตัวอย่างเพื่อการสาธิต ราคาและสินค้าเป็นข้อมูลสมมติ · ภาพประกอบจาก{" "}
-            <a href="https://www.jib.co.th" target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
-              JIB
-            </a>{" "}และแหล่งภาพสินค้า
+            © 2026 EDM PC Shop —{" "}
+            <a href="https://me.mosapps.dev" target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
+              Intern mosfes
+            </a>
           </p>
-          <p>ชำระเงินได้ด้วย บัตรเครดิต · พร้อมเพย์ · โอนผ่านธนาคาร</p>
         </div>
       </div>
     </footer>

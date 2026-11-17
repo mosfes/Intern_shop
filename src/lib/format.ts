@@ -20,7 +20,6 @@ export const FREE_SHIPPING_THRESHOLD = 3000;
 
 export const shippingOptions = [
   { id: "standard", label: "จัดส่งมาตรฐาน", description: "ได้รับภายใน 2–4 วันทำการ", price: 60 },
-  { id: "express", label: "จัดส่งด่วน", description: "ได้รับภายใน 1–2 วันทำการ", price: 120 },
   { id: "pickup", label: "รับที่หน้าร้าน", description: "EDM PC Shop สาขาสยาม — พร้อมรับใน 2 ชม.", price: 0 },
 ] as const;
 

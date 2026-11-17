@@ -6,6 +6,8 @@ export interface CategorySpecField {
   label: string;
   /** Placeholder shown to the admin, e.g. "AM5 หรือ LGA1700". */
   example: string;
+  /** Short explanation of what to enter, e.g. "ยาว x กว้าง x สูง (มม.)". */
+  hint?: string;
   /** Read by the PC builder compatibility check — keep the label unchanged. */
   compatibility?: boolean;
   /** Read by the PC builder power advice — keep the label unchanged. */
@@ -87,6 +89,9 @@ export interface Order {
   lines: OrderLine[];
   subtotal: number;
   shipping: number;
+  /** Baht taken off by a discount code (absent on older orders). */
+  discount?: number;
+  discountCode?: string;
   total: number;
   shippingMethod: string;
   paymentMethod: string;

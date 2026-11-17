@@ -18,6 +18,16 @@ async function main() {
       if (constraint && existingConstraints.has(constraint[1])) continue;
       await prisma.$executeRawUnsafe(statement);
     }
+    // Upgrade: tables created before the "hint" column existed. Fill the starter explanations once.
+    const hintColumn = await prisma.$queryRaw<{ count: bigint | number }[]>`SELECT COUNT(*) AS count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'CategorySpecField' AND COLUMN_NAME = 'hint'`;
+    if (!Number(hintColumn[0].count)) {
+      await prisma.$executeRawUnsafe("ALTER TABLE `CategorySpecField` ADD COLUMN `hint` VARCHAR(500) NOT NULL DEFAULT '' AFTER `example`");
+      for (const slug of builtInSpecSlugs()) {
+        const category = await prisma.category.findUnique({ where: { slug }, select: { id: true } });
+        if (!category) continue;
+        for (const field of builtInSpecFields(slug)) await prisma.categorySpecField.updateMany({ where: { categoryId: category.id, label: field.label }, data: { hint: field.hint ?? "", example: field.example } });
+      }
+    }
     // First run only: give the known categories their starter specs. After that the admin owns them.
     let seeded = 0;
     if (!Number(hadSpecFields[0].count)) {
@@ -25,7 +35,7 @@ async function main() {
         const category = await prisma.category.findUnique({ where: { slug }, select: { id: true } });
         const fields = builtInSpecFields(slug);
         if (!category || await prisma.categorySpecField.count({ where: { categoryId: category.id } })) continue;
-        await prisma.categorySpecField.createMany({ data: fields.map((field, position) => ({ categoryId: category.id, label: field.label, example: field.example, compatibility: !!field.compatibility, powerAdvice: !!field.powerAdvice, position })) });
+        await prisma.categorySpecField.createMany({ data: fields.map((field, position) => ({ categoryId: category.id, label: field.label, example: field.example, hint: field.hint ?? "", compatibility: !!field.compatibility, powerAdvice: !!field.powerAdvice, position })) });
         seeded++;
       }
     }

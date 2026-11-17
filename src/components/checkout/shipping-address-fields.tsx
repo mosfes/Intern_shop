@@ -60,10 +60,10 @@ function AddressSelect({
   );
 }
 
-export function ShippingAddressFields() {
-  const [province, setProvince] = useState("กรุงเทพมหานคร");
-  const [district, setDistrict] = useState("");
-  const [postcode, setPostcode] = useState("");
+export function ShippingAddressFields({ defaults }: { defaults?: { province: string; district: string; postcode: string } }) {
+  const [province, setProvince] = useState(defaults?.province ?? "กรุงเทพมหานคร");
+  const [district, setDistrict] = useState(defaults?.district ?? "");
+  const [postcode, setPostcode] = useState(defaults?.postcode ?? "");
   const districts = provinces.find((item) => item.name === province)?.districts ?? [];
   const postcodes = districts.find((item) => item.name === district)?.postcodes ?? [];
 

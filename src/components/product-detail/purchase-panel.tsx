@@ -8,6 +8,7 @@ import { BoltIcon, CheckIcon, RefreshIcon, ShieldIcon, TruckIcon } from "@/compo
 import { AddToCartButton, Price, Rating, StockChip, WishlistButton } from "@/components/product/product-bits";
 import { useCatalog } from "@/components/catalog-provider";
 import { formatBaht } from "@/lib/format";
+import { CART_LIMIT_MESSAGE, MAX_LINE_QUANTITY } from "@/lib/cart-limits";
 import { CHECKOUT_LOGIN_HREF } from "@/lib/auth-redirect";
 import { ADMIN_ORDER_BLOCKED_MESSAGE, storeActions, useIsAdmin, useStore } from "@/lib/store";
 import type { Product } from "@/lib/types";
@@ -82,7 +83,7 @@ export function PurchasePanel({ product }: { product: Product }) {
           onChange={(v) => setQty(Number.isFinite(v) ? v : 1)}
           minValue={1}
           formatOptions={{ maximumFractionDigits: 0 }}
-          maxValue={Math.max(1, product.stock)}
+          maxValue={Math.max(1, Math.min(product.stock, MAX_LINE_QUANTITY))}
           isDisabled={soldOut}
           className="flex w-full flex-row items-center justify-between gap-3 sm:flex-col sm:items-stretch sm:w-36 sm:shrink-0"
         >
@@ -110,7 +111,10 @@ export function PurchasePanel({ product }: { product: Product }) {
             toast.danger(ADMIN_ORDER_BLOCKED_MESSAGE);
             return;
           }
-          storeActions.addToCart(product, qty);
+          if (!storeActions.addToCart(product, qty)) {
+            toast.danger(CART_LIMIT_MESSAGE);
+            return;
+          }
           if (!signedIn) {
             toast("กรุณาเข้าสู่ระบบก่อนสั่งซื้อ", { description: "เพิ่มสินค้าลงตะกร้าให้แล้ว" });
             router.push(CHECKOUT_LOGIN_HREF);

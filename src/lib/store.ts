@@ -1,8 +1,10 @@
 "use client";
 
+import { toast } from "@heroui/react";
 import { useSyncExternalStore } from "react";
 import type { CartLine, DemoUser, Order, Product } from "./types";
 import type { PcBuild } from "./pc-builder";
+import { MAX_CART_LINES, MAX_LINE_QUANTITY, limitCartLines } from "./cart-limits";
 
 /**
  * Tiny client-side store persisted to localStorage.
@@ -42,7 +44,7 @@ function load() {
       // Ids that no longer exist in the catalogue are skipped where the cart/wishlist is rendered.
       state = {
         pcBuild: parsed.pcBuild ?? {},
-        cart: parsed.cart ?? [],
+        cart: limitCartLines(parsed.cart ?? []),
         wishlist: parsed.wishlist ?? [],
         user: parsed.user ?? null,
         orders: parsed.orders ?? [],
@@ -115,14 +117,17 @@ const noopSubscribe = () => () => {};
 // locally, stays flagged dirty, and is retried on the next refresh.
 const normalizeLines = (lines: CartLine[]) => lines.map((l) => ({ productId: l.productId, quantity: l.quantity, selected: l.selected !== false }));
 
-function mergeCarts(remote: CartLine[], local: CartLine[]): CartLine[] {
+/** `skipped` counts guest products left out because the account's cart is already full. */
+function mergeCarts(remote: CartLine[], local: CartLine[]): { cart: CartLine[]; skipped: number } {
+  let skipped = 0;
   const merged = new Map(normalizeLines(remote).map((l) => [l.productId, l]));
   for (const line of normalizeLines(local)) {
     const existing = merged.get(line.productId);
     if (existing) existing.quantity = Math.max(existing.quantity, line.quantity);
-    else merged.set(line.productId, line);
+    else if (merged.size < MAX_CART_LINES) merged.set(line.productId, line);
+    else skipped += 1;
   }
-  return [...merged.values()];
+  return { cart: limitCartLines([...merged.values()]), skipped };
 }
 
 const cartKey = (lines: CartLine[]) =>
@@ -179,12 +184,18 @@ async function pullCart() {
     if (syncedAccount() !== account) return; // signed out or switched account meanwhile
     const unsaved = state.cartOwner === account && state.cartDirty;
     let next: CartLine[];
+    let skipped = 0;
     if (unsaved) next = state.cart; // offline/unsaved edits on this device win
-    else if (state.cartOwner === null) next = mergeCarts(remote, state.cart); // guest cart joins the account
+    else if (state.cartOwner === null) ({ cart: next, skipped } = mergeCarts(remote, state.cart)); // guest cart joins the account
     else next = remote; // already mirrors this account (or another account's leftovers): server wins
     const needsSave = unsaved || cartKey(next) !== cartKey(remote);
     if (cartKey(next) !== cartKey(state.cart) || state.cartOwner !== account || state.cartDirty !== needsSave) {
       setState((s) => ({ ...s, cart: cartKey(next) === cartKey(s.cart) ? s.cart : next, cartOwner: account, cartDirty: needsSave }), true);
+    }
+    if (skipped > 0) {
+      toast.warning("ตะกร้าของบัญชีเต็มแล้ว", {
+        description: `สินค้า ${skipped} รายการที่เลือกไว้ก่อนเข้าสู่ระบบไม่ได้ถูกเพิ่ม (ตะกร้าใส่ได้สูงสุด ${MAX_CART_LINES} รายการ)`,
+      });
     }
     if (needsSave) await flushCart();
   } catch {
@@ -202,7 +213,9 @@ export const storeActions = {
   addBuildToCart(products: Product[]) {
     load();
     if (state.user?.role === "admin") return false;
-    if (!products.length || products.some((p) => p.stock <= (state.cart.find((line) => line.productId === p.id)?.quantity ?? 0))) return false;
+    const inCart = (p: Product) => state.cart.find((line) => line.productId === p.id)?.quantity ?? 0;
+    if (!products.length || products.some((p) => Math.min(p.stock, MAX_LINE_QUANTITY) <= inCart(p))) return false;
+    if (state.cart.length + products.filter((p) => !inCart(p)).length > MAX_CART_LINES) return false;
     setState((s) => {
       const cart = s.cart.map((line) => ({ ...line }));
       for (const product of products) {
@@ -220,14 +233,18 @@ export const storeActions = {
   addToCart(product: Product, quantity = 1) {
     if (state.user?.role === "admin") return false;
     if (product.stock <= 0) return false;
+    load();
     const productId = product.id;
+    const cap = Math.min(product.stock, MAX_LINE_QUANTITY);
+    const existing = state.cart.find((l) => l.productId === productId);
+    // Nothing to add when the line is already full or the cart has no room for a new product.
+    if (existing ? existing.quantity >= cap : state.cart.length >= MAX_CART_LINES) return false;
     setState((s) => {
-      const existing = s.cart.find((l) => l.productId === productId);
       const cart = existing
         ? s.cart.map((l) =>
-            l.productId === productId ? { ...l, quantity: Math.min(product.stock, l.quantity + quantity), selected: true } : l,
+            l.productId === productId ? { ...l, quantity: Math.min(cap, l.quantity + quantity), selected: true } : l,
           )
-        : [...s.cart, { productId, quantity: Math.min(product.stock, quantity) }];
+        : [...s.cart, { productId, quantity: Math.min(cap, quantity) }];
       return { ...s, cart };
     });
     return true;
@@ -237,7 +254,7 @@ export const storeActions = {
     setState((s) => ({
       ...s,
       cart: s.cart.map((l) =>
-        l.productId === productId ? { ...l, quantity: Math.max(1, Math.min(product.stock, quantity)) } : l,
+        l.productId === productId ? { ...l, quantity: Math.max(1, Math.min(product.stock, MAX_LINE_QUANTITY, quantity)) } : l,
       ),
     }));
   },
@@ -252,6 +269,16 @@ export const storeActions = {
   },
   removeFromCart(productId: string) {
     setState((s) => ({ ...s, cart: s.cart.filter((l) => l.productId !== productId) }));
+  },
+  /** Undo for removeFromCart: puts the line back as it was. Never adds to a line that is
+   * already in the cart, so pressing "undo" more than once cannot stack quantity. */
+  restoreLine(product: Product, quantity: number, selected = true) {
+    if (state.user?.role === "admin" || product.stock <= 0) return false;
+    if (state.cart.some((l) => l.productId === product.id)) return false;
+    if (state.cart.length >= MAX_CART_LINES) return false;
+    const line = { productId: product.id, quantity: Math.max(1, Math.min(product.stock, MAX_LINE_QUANTITY, quantity)), selected };
+    setState((s) => ({ ...s, cart: [...s.cart, line] }));
+    return true;
   },
   clearCart() {
     setState((s) => ({ ...s, cart: [] }));
@@ -276,18 +303,37 @@ export const storeActions = {
     const response = await fetch("/api/auth/session", { method: "DELETE" });
     if (!response.ok) throw new Error("Sign out failed");
     // The saved cart stays with the account; this browser goes back to an empty guest cart.
-    setState((s) => ({ ...s, user: null, cart: [], cartOwner: null, cartDirty: false }), true);
+    setState((s) => ({ ...s, user: null, orders: [], cart: [], cartOwner: null, cartDirty: false }), true);
   },
   syncGoogleUser(user: DemoUser | null) {
     setState((s) => {
       if (user) {
         // Retain editable contact details for the same Google identity.
-        return { ...s, user: s.user?.googleId === user.googleId ? { ...s.user, ...user } : user };
+        const sameAccount = s.user?.googleId === user.googleId;
+        return { ...s, orders: sameAccount ? s.orders : [], user: sameAccount ? { ...s.user, ...user } : user };
       }
       // Session ended (e.g. expired): what's left here becomes a guest cart that merges on the next login.
-      return s.user?.googleId ? { ...s, user: null, cartOwner: null, cartDirty: false } : s;
+      return s.user?.googleId ? { ...s, user: null, orders: [], cartOwner: null, cartDirty: false } : s;
     });
-    void pullCart();
+    void storeActions.refreshOrders().then(() => pullCart());
+  },
+  /** Paid orders are stored on the server, including payments completed with the browser closed. */
+  async refreshOrders() {
+    load();
+    const account = syncedAccount();
+    if (!account) return;
+    try {
+      const response = await fetch("/api/orders", { cache: "no-store" });
+      if (!response.ok) return;
+      const result = await response.json();
+      if (syncedAccount() !== account || !Array.isArray(result.orders)) return;
+      const orders = result.orders as Order[];
+      setState((s) => {
+        const merged = new Map(s.orders.map((order) => [order.id, order]));
+        for (const order of orders) merged.set(order.id, order);
+        return { ...s, orders: [...merged.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)) };
+      }, true);
+    } catch { /* Retry on the next visit or tab focus; retain cached orders offline. */ }
   },
   /** Re-reads the saved cart (e.g. when the tab regains focus), pushing local edits first if any. */
   refreshCart() {
@@ -300,6 +346,8 @@ export const storeActions = {
   placeOrder(order: Order) {
     load();
     if (!state.user || state.user.role === "admin") return false;
+    // The same paid order can be settled more than once (reload, second tab); keep one copy.
+    if (state.orders.some((o) => o.id === order.id)) return true;
     // Only the lines that were ordered leave the cart; unticked items stay for later.
     const ordered = new Set(order.lines.map((l) => l.productId));
     setState((s) => ({ ...s, orders: [order, ...s.orders], cart: s.cart.filter((l) => !ordered.has(l.productId)) }));

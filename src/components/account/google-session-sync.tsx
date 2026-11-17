@@ -20,7 +20,9 @@ export function GoogleSessionSync() {
       .catch(() => { /* Retain the current display during temporary network failures. */ });
     // Pick up cart changes made on another device (and retry any unsaved ones) when the tab is shown again.
     const onVisible = () => {
-      if (document.visibilityState === "visible") storeActions.refreshCart();
+      if (document.visibilityState === "visible") {
+        void storeActions.refreshOrders().then(() => storeActions.refreshCart());
+      }
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {

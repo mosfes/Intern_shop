@@ -4,6 +4,7 @@ import { Button, Chip, Tooltip, toast } from "@heroui/react";
 import Image from "next/image";
 import { useState } from "react";
 import { CartIcon, CheckIcon, HeartIcon, StarIcon } from "@/components/icons";
+import { CART_LIMIT_MESSAGE } from "@/lib/cart-limits";
 import { formatBaht, stockStatus } from "@/lib/format";
 import { ADMIN_ORDER_BLOCKED_MESSAGE, storeActions, useIsAdmin, useIsWishlisted } from "@/lib/store";
 import type { Product } from "@/lib/types";
@@ -150,6 +151,8 @@ export function AddToCartButton({
             description: `${product.name} × ${quantity}`,
             timeout: 3000,
           });
+        } else {
+          toast.danger(CART_LIMIT_MESSAGE);
         }
       }}
     >

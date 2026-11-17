@@ -2,6 +2,7 @@
 
 import {
   Button,
+  Checkbox,
   Description,
   FieldError,
   Form,
@@ -21,20 +22,27 @@ import { CHECKOUT_LOGIN_HREF } from "@/lib/auth-redirect";
 import { CartSkeleton } from "@/components/cart/cart-view";
 import { OrderSummary } from "@/components/cart/order-summary";
 import { ShippingAddressFields } from "@/components/checkout/shipping-address-fields";
-import { BankIcon, CartIcon, CashIcon, CheckIcon, CreditCardIcon, QrIcon, ShieldIcon } from "@/components/icons";
+import { BankIcon, CartIcon, CheckIcon, CreditCardIcon, QrIcon, ShieldIcon } from "@/components/icons";
 import { useCatalog } from "@/components/catalog-provider";
+import { useAddressBook } from "@/lib/address-book";
+import { formatAddressLine, type SavedAddress } from "@/lib/addresses";
 import { formatBaht, shippingCost, shippingOptions, type ShippingId } from "@/lib/format";
+import { CardFields, createCardToken } from "@/components/checkout/card-fields";
+import { BankSelect } from "@/components/checkout/bank-select";
+import { DiscountCodeField } from "@/components/checkout/discount-code-field";
 import { AdminOrderNotice } from "@/components/account/admin-order-notice";
-import { cartDetails, storeActions, useCartLines, useHydrated, useIsAdmin, useStore } from "@/lib/store";
+import { cartDetails, useCartLines, useHydrated, useIsAdmin, useStore } from "@/lib/store";
+import { MOBILE_BANKS, type PaymentMethod } from "@/lib/payments";
+import { savePendingPayment } from "@/lib/pending-payment";
 import type { Order } from "@/lib/types";
 
-const paymentMethods = [
+const paymentChoices = [
   { id: "card", label: "บัตรเครดิต / เดบิต", description: "Visa, Mastercard, JCB", icon: CreditCardIcon },
   { id: "promptpay", label: "พร้อมเพย์ QR", description: "สแกนจ่ายผ่านแอปธนาคาร", icon: QrIcon },
-  { id: "transfer", label: "โอนผ่านธนาคาร", description: "แนบสลิปภายใน 24 ชม.", icon: BankIcon },
-  { id: "cod", label: "เก็บเงินปลายทาง", description: "ค่าบริการเพิ่ม ฿30", icon: CashIcon },
+  { id: "mobile", label: "Mobile Banking", description: "เปิดแอปธนาคารบนมือถือเพื่อจ่าย", icon: BankIcon },
 ] as const;
-type PaymentId = (typeof paymentMethods)[number]["id"];
+type PaymentChoice = (typeof paymentChoices)[number]["id"];
+
 
 function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
@@ -51,7 +59,10 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 const radioCard =
   "w-full rounded-xl border border-border p-4 transition-colors hover:border-accent/40 data-[selected=true]:border-accent data-[selected=true]:bg-accent-soft/40";
 
-export function CheckoutView() {
+/** `omisePublicKey` is Omise's browser-safe key (pkey_…); without it payments are switched off. */
+export function CheckoutView({ omisePublicKey }: { omisePublicKey: string }) {
+  const paymentsEnabled = !!omisePublicKey;
+  const omiseTestMode = omisePublicKey.startsWith("pkey_test_");
   const hydrated = useHydrated();
   const lines = useCartLines();
   const user = useStore((s) => s.user);
@@ -59,11 +70,23 @@ export function CheckoutView() {
   const { productMap } = useCatalog();
   const { selectedItems: items, subtotal, savings } = cartDetails(lines, productMap);
   const [shipping, setShipping] = useState<ShippingId>("standard");
-  const [payment, setPayment] = useState<PaymentId>("card");
+  const [payment, setPayment] = useState<PaymentChoice>("promptpay");
+  const [bank, setBank] = useState<(typeof MOBILE_BANKS)[number]["id"]>(MOBILE_BANKS[0].id);
+  const [payError, setPayError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [placed, setPlaced] = useState<Order | null>(null);
+  // A code applies to one subtotal; if the cart changes underneath, it must be applied again.
+  const [applied, setApplied] = useState<{ code: string; discount: number; subtotal: number } | null>(null);
+  const [codeError, setCodeError] = useState("");
+  // "new" = type an address by hand; otherwise the id of a saved address that fills the form.
+  const [pickedId, setPickedId] = useState<string | "new" | null>(null);
+  const [saveForLater, setSaveForLater] = useState(true);
+  const book = useAddressBook(hydrated && !!user?.googleId && !isAdmin);
   const router = useRouter();
-  const mustSignIn = hydrated && !user && !placed;
+  const mustSignIn = hydrated && !user;
+
+  // Until the customer chooses, start from the default saved address (or the first one).
+  const saved = book.addresses;
+  const activeId = pickedId ?? (saved ? (saved.length === 0 ? "new" : (saved.find((a) => a.isDefault) ?? saved[0]).id) : null);
 
   // Signed-out visitors may fill a cart but can't order: send them to log in, then back here.
   useEffect(() => {
@@ -72,7 +95,6 @@ export function CheckoutView() {
 
   if (!hydrated) return <CartSkeleton />;
   if (isAdmin) return <AdminOrderNotice />;
-  if (placed) return <Confirmation order={placed} />;
   if (!user) {
     return (
       <div role="status" className="rounded-xl border border-dashed border-border bg-surface px-6 py-16 text-center">
@@ -105,55 +127,79 @@ export function CheckoutView() {
     );
   }
 
-  const ship = shippingCost(shipping, subtotal) + (payment === "cod" ? 30 : 0);
+  const picked = saved?.find((a) => a.id === activeId);
+  const ship = shippingCost(shipping, subtotal);
+  const coupon = applied && applied.subtotal === subtotal ? applied : null;
+  const discount = coupon?.discount ?? 0;
+  const payable = subtotal - discount + ship;
 
   return (
     <Form
       className="grid gap-8 lg:grid-cols-[1fr_380px]"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
+        if (submitting) return;
         const data = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
+        const method: PaymentMethod = payment === "mobile" ? bank : payment;
         setSubmitting(true);
-        // Simulated processing delay — no real payment or network call happens.
-        window.setTimeout(() => {
-          const order: Order = {
-            id: `CB${Date.now().toString().slice(-8)}`,
-            createdAt: new Date().toISOString(),
-            status: "processing",
-            lines: items.map((i) => ({
-              productId: i.product.id,
-              name: i.product.name,
-              image: i.product.images[0],
-              price: i.product.price,
-              quantity: i.quantity,
-            })),
-            subtotal,
-            shipping: ship,
-            total: subtotal + ship,
-            shippingMethod: shippingOptions.find((o) => o.id === shipping)!.label,
-            paymentMethod: paymentMethods.find((p) => p.id === payment)!.label,
-            address: `${data.fullName} · ${data.address} ${data.district} ${data.province} ${data.postcode}`,
-          };
-          if (!storeActions.placeOrder(order)) {
-            setSubmitting(false);
-            router.replace(CHECKOUT_LOGIN_HREF);
-            return;
+        setPayError("");
+        try {
+          // Card details go from these inputs straight to Omise, which returns a one-time token for our server.
+          const token = payment === "card" ? await createCardToken(omisePublicKey) : undefined;
+          const response = await fetch("/api/payments/charge", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              method,
+              token,
+              lines: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+              shipping,
+              discountCode: coupon?.code,
+              address: {
+                fullName: data.fullName, phone: data.phone, address: data.address,
+                province: data.province, district: data.district, postcode: data.postcode,
+              },
+            }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (response.status === 401) { router.replace(CHECKOUT_LOGIN_HREF); return; }
+          if (!response.ok) {
+            // A code that stopped working is dropped so the customer sees the real total again.
+            if (coupon && /โค้ด/.test(result.error ?? "")) { setApplied(null); setCodeError(result.error); }
+            throw new Error(result.error || "ชำระเงินไม่สำเร็จ กรุณาลองอีกครั้ง");
           }
-          setPlaced(order);
+          // The order is saved with the payment so it can be completed after the redirect; the server's
+          // amounts replace ours so the order always matches what was charged.
+          const order: Order = result.order;
+          savePendingPayment({ chargeId: result.chargeId, order });
+          if (activeId === "new" && saveForLater) {
+            // Best effort: a failure here is not shown as an error.
+            const duplicate = (saved ?? []).some((a) => formatAddressLine(a) === formatAddressLine({ address: data.address, district: data.district, province: data.province, postcode: data.postcode }) && a.fullName === data.fullName);
+            if (!duplicate) {
+              void book.add({ label: "", fullName: data.fullName, phone: data.phone, address: data.address, province: data.province, district: data.district, postcode: data.postcode });
+            }
+          }
+          // Banks and 3-D Secure take the customer away to approve; everything else waits on our status page.
+          if (result.authorizeUri) window.location.assign(result.authorizeUri);
+          else router.push("/checkout/complete");
+        } catch (error) {
+          setPayError(error instanceof Error ? error.message : "ชำระเงินไม่สำเร็จ กรุณาลองอีกครั้ง");
           setSubmitting(false);
-          window.scrollTo({ top: 0 });
-        }, 900);
+        }
       }}
     >
       <div className="min-w-0 space-y-5">
         <Step n={1} title="ข้อมูลการจัดส่ง">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TextField name="fullName" isRequired defaultValue={user?.name} autoComplete="name">
+          {saved && saved.length > 0 && (
+            <SavedAddressPicker addresses={saved} value={activeId} onChange={setPickedId} />
+          )}
+          <div key={activeId ?? "loading"} className="grid gap-4 sm:grid-cols-2">
+            <TextField name="fullName" isRequired defaultValue={picked?.fullName ?? user?.name} autoComplete="name">
               <Label>ชื่อ-นามสกุล</Label>
               <Input placeholder="สมชาย ใจดี" />
               <FieldError>กรุณากรอกชื่อผู้รับ</FieldError>
             </TextField>
-            <TextField name="phone" type="tel" isRequired defaultValue={user?.phone} autoComplete="tel" pattern="[0-9\- ]{9,12}">
+            <TextField name="phone" type="tel" isRequired defaultValue={picked?.phone ?? user?.phone} autoComplete="tel" pattern="[0-9\- ]{9,12}">
               <Label>เบอร์โทรศัพท์</Label>
               <Input placeholder="08x-xxx-xxxx" />
               <FieldError>กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง</FieldError>
@@ -164,12 +210,22 @@ export function CheckoutView() {
               <Description>ใช้สำหรับส่งใบยืนยันคำสั่งซื้อ (เดโม)</Description>
               <FieldError>กรุณากรอกอีเมลให้ถูกต้อง</FieldError>
             </TextField>
-            <TextField name="address" isRequired className="sm:col-span-2" autoComplete="street-address">
+            <TextField name="address" isRequired defaultValue={picked?.address} className="sm:col-span-2" autoComplete="street-address">
               <Label>ที่อยู่</Label>
               <TextArea placeholder="บ้านเลขที่ อาคาร ถนน" rows={2} />
               <FieldError>กรุณากรอกที่อยู่</FieldError>
             </TextField>
-            <ShippingAddressFields />
+            <ShippingAddressFields defaults={picked ? { province: picked.province, district: picked.district, postcode: picked.postcode } : undefined} />
+            {activeId === "new" && book.addresses !== null && !book.failed && (
+              <Checkbox isSelected={saveForLater} onChange={setSaveForLater} className="sm:col-span-2">
+                <Checkbox.Control>
+                  <Checkbox.Indicator />
+                </Checkbox.Control>
+                <Checkbox.Content>
+                  <Label>บันทึกที่อยู่นี้ไว้ใช้ในครั้งต่อไป</Label>
+                </Checkbox.Content>
+              </Checkbox>
+            )}
           </div>
         </Step>
 
@@ -201,10 +257,10 @@ export function CheckoutView() {
           <RadioGroup
             aria-label="วิธีการชำระเงิน"
             value={payment}
-            onChange={(v) => setPayment(v as PaymentId)}
+            onChange={(v) => setPayment(v as PaymentChoice)}
             className="grid gap-3 sm:grid-cols-2"
           >
-            {paymentMethods.map((m) => (
+            {paymentChoices.map((m) => (
               <Radio key={m.id} value={m.id} className={radioCard}>
                 <Radio.Content className="w-full">
                   <Radio.Control>
@@ -219,12 +275,16 @@ export function CheckoutView() {
               </Radio>
             ))}
           </RadioGroup>
+          {payment === "card" && <CardFields publicKey={omisePublicKey} disabled={submitting || !paymentsEnabled} />}
+          {payment === "mobile" && (
+            <BankSelect value={bank} onChange={setBank} isDisabled={submitting} />
+          )}
           <div className="mt-4 rounded-xl border border-dashed border-border bg-surface-secondary/60 p-4 text-sm text-muted">
-            {payment === "card" && "ในระบบจริงจะแสดงฟอร์มบัตรที่ปลอดภัยจากผู้ให้บริการชำระเงิน — เว็บไซต์เดโมนี้ไม่รับและไม่เก็บข้อมูลบัตร"}
-            {payment === "promptpay" && "หลังยืนยันคำสั่งซื้อ ระบบจริงจะแสดง QR พร้อมเพย์สำหรับสแกนชำระ (เดโม)"}
-            {payment === "transfer" && "ระบบจริงจะแสดงเลขบัญชีและช่องแนบสลิปหลังยืนยันคำสั่งซื้อ (เดโม)"}
-            {payment === "cod" && "ชำระเงินสดกับพนักงานเมื่อได้รับสินค้า มีค่าบริการเพิ่ม ฿30"}
+            {payment === "card" && "ข้อมูลบัตรส่งตรงถึง Omise ผู้ให้บริการชำระเงิน ร้านไม่เก็บเลขบัตรของคุณ บางบัตรอาจต้องยืนยันตัวตน (3-D Secure) กับธนาคาร"}
+            {payment === "promptpay" && "หลังกดยืนยัน ระบบจะแสดง QR พร้อมเพย์ให้สแกนจ่ายผ่านแอปธนาคาร QR มีอายุ 30 นาที"}
+            {payment === "mobile" && "หลังกดยืนยัน ระบบจะพาไปเปิดแอปธนาคารที่เลือกเพื่ออนุมัติการชำระเงิน แล้วกลับมาที่ร้านอัตโนมัติ"}
           </div>
+          {!paymentsEnabled && <p role="alert" className="mt-3 text-sm text-danger">ระบบชำระเงินยังไม่เปิดใช้งาน (ยังไม่ได้ตั้งค่า Omise)</p>}
         </Step>
       </div>
 
@@ -233,8 +293,9 @@ export function CheckoutView() {
           subtotal={subtotal}
           savings={savings}
           shipping={ship}
-          shippingLabel={payment === "cod" ? "ค่าจัดส่ง + COD" : "ค่าจัดส่ง"}
-          lines={
+          discount={discount}
+          discountCode={coupon?.code}
+                    lines={
             <ul className="mb-4 max-h-64 space-y-3 overflow-y-auto border-b border-border pb-4">
               {items.map(({ product, quantity }) => (
                 <li key={product.id} className="flex items-center gap-3">
@@ -251,12 +312,22 @@ export function CheckoutView() {
             </ul>
           }
         >
-          <Button type="submit" size="lg" fullWidth isPending={submitting}>
-            {submitting ? "กำลังดำเนินการ..." : `ยืนยันคำสั่งซื้อ · ${formatBaht(subtotal + ship)}`}
+          <DiscountCodeField
+            subtotal={subtotal}
+            applied={coupon}
+            error={codeError}
+            disabled={submitting}
+            onApply={(next) => { setApplied(next); setCodeError(""); }}
+            onRemove={() => { setApplied(null); setCodeError(""); }}
+            onError={setCodeError}
+          />
+          {payError && <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">{payError}</p>}
+          <Button type="submit" size="lg" fullWidth isPending={submitting} isDisabled={!paymentsEnabled}>
+            {submitting ? "กำลังดำเนินการ..." : `ชำระเงิน · ${formatBaht(payable)}`}
           </Button>
           <p className="flex items-start gap-1.5 text-xs text-muted">
             <ShieldIcon size={14} className="mt-0.5 shrink-0" />
-            นี่คือเว็บไซต์สาธิต การกดยืนยันจะไม่มีการชำระเงินหรือจัดส่งสินค้าจริง
+            {omiseTestMode ? "โหมดทดสอบ: ใช้บัตรทดสอบของ Omise เท่านั้น ไม่มีการเรียกเก็บเงินจริง" : "ชำระเงินอย่างปลอดภัยผ่าน Omise"}
           </p>
         </OrderSummary>
       </aside>
@@ -264,7 +335,57 @@ export function CheckoutView() {
   );
 }
 
-function Confirmation({ order }: { order: Order }) {
+function SavedAddressPicker({
+  addresses,
+  value,
+  onChange,
+}: {
+  addresses: SavedAddress[];
+  value: string | null;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div className="mb-5">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="text-sm font-medium">ที่อยู่ที่บันทึกไว้</p>
+        <Link href="/profile" className="text-sm text-accent hover:text-foreground">
+          จัดการที่อยู่
+        </Link>
+      </div>
+      <RadioGroup aria-label="เลือกที่อยู่จัดส่ง" value={value ?? ""} onChange={onChange} className="gap-3">
+        {addresses.map((a) => (
+          <Radio key={a.id} value={a.id} className={radioCard}>
+            <Radio.Content className="w-full">
+              <Radio.Control>
+                <Radio.Indicator />
+              </Radio.Control>
+              <div className="min-w-0 flex-1">
+                <Label className="cursor-pointer font-medium">
+                  {a.label || a.fullName}
+                  {a.isDefault && <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-normal text-accent">ค่าเริ่มต้น</span>}
+                </Label>
+                <p className="text-xs text-muted">
+                  {a.fullName} · {a.phone}
+                </p>
+                <p className="text-xs text-muted">{formatAddressLine(a)}</p>
+              </div>
+            </Radio.Content>
+          </Radio>
+        ))}
+        <Radio value="new" className={radioCard}>
+          <Radio.Content className="w-full">
+            <Radio.Control>
+              <Radio.Indicator />
+            </Radio.Control>
+            <Label className="cursor-pointer font-medium">ใช้ที่อยู่ใหม่</Label>
+          </Radio.Content>
+        </Radio>
+      </RadioGroup>
+    </div>
+  );
+}
+
+export function Confirmation({ order }: { order: Order }) {
   return (
     <div className="mx-auto max-w-2xl animate-fade-up text-center">
       <span className="mx-auto mb-5 grid size-16 place-items-center rounded-full bg-success-soft text-success">
@@ -272,7 +393,7 @@ function Confirmation({ order }: { order: Order }) {
       </span>
       <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">ขอบคุณสำหรับคำสั่งซื้อ!</h2>
       <p className="mt-2 text-muted">
-        หมายเลขคำสั่งซื้อ <span className="font-semibold text-foreground">#{order.id}</span> · คำสั่งซื้อเดโม ไม่มีการเรียกเก็บเงินจริง
+        หมายเลขคำสั่งซื้อ <span className="font-semibold text-foreground">#{order.id}</span>
       </p>
       <div className="mt-8 rounded-xl border border-border bg-surface p-5 text-left sm:p-6">
         <ul className="space-y-3">

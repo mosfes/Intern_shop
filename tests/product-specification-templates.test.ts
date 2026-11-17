@@ -2,19 +2,19 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { products } from "../src/data/products";
 import { checkBuild, type BuildParts } from "../src/lib/pc-builder";
-import { addSpecificationDefaults, specificationTemplates } from "../src/lib/product-specification-templates";
+import { addSpecificationDefaults, builtInSpecFields } from "../src/lib/product-specification-templates";
 
 test("restoring defaults preserves edited fields, selections and custom specifications", () => {
   const existing = [
     { id: "saved", label: " Socket ", value: "AM5", highlighted: true },
     { id: "custom", label: "Custom", value: "Original value", highlighted: false },
   ];
-  const restored = addSpecificationDefaults("cpu", existing);
+  const restored = addSpecificationDefaults(builtInSpecFields("cpu"), existing);
   assert.deepEqual(restored.slice(0, 2), existing);
   assert.equal(restored.filter((row) => row.label.trim().toLowerCase() === "socket").length, 1);
-  assert.deepEqual(addSpecificationDefaults("cpu", restored), restored);
-  assert.deepEqual(addSpecificationDefaults("custom-category", existing), existing);
-  assert.deepEqual(specificationTemplates("constructor"), []);
+  assert.deepEqual(addSpecificationDefaults(builtInSpecFields("cpu"), restored), restored);
+  assert.deepEqual(addSpecificationDefaults(builtInSpecFields("custom-category"), existing), existing);
+  assert.deepEqual(builtInSpecFields("constructor"), []);
 });
 
 test("products filled using default field names support all existing build checks", () => {
@@ -29,7 +29,7 @@ test("products filled using default field names support all existing build check
   };
   const parts: BuildParts = Object.fromEntries(Object.entries(values).map(([category, fields]) => [category, {
     ...products.find((product) => product.category === category)!,
-    specifications: addSpecificationDefaults(category, []).filter((row) => fields[row.label]).map((row) => ({ label: row.label, value: fields[row.label] })),
+    specifications: addSpecificationDefaults(builtInSpecFields(category), []).filter((row) => fields[row.label]).map((row) => ({ label: row.label, value: fields[row.label] })),
   }]));
   const checks = checkBuild(parts);
   assert.equal(checks.length, 6);
@@ -42,5 +42,5 @@ test("products filled using default field names support all existing build check
 
 test("restoring a full product respects the specification row limit", () => {
   const rows = Array.from({ length: 79 }, (_, index) => ({ id: `${index}`, label: `Custom ${index}`, value: "value", highlighted: false }));
-  assert.equal(addSpecificationDefaults("cpu", rows).length, 80);
+  assert.equal(addSpecificationDefaults(builtInSpecFields("cpu"), rows).length, 80);
 });

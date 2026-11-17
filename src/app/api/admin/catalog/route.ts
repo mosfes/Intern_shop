@@ -75,9 +75,9 @@ async function mutate(request: NextRequest, method: "POST" | "PUT" | "DELETE") {
         const row = existing ? await client.category.update({ where: { id: existing.id }, data: fields }) : await client.category.create({ data: fields });
         if (specFields) {
           await client.categorySpecField.deleteMany({ where: { categoryId: row.id } });
-          if (specFields.length) await client.categorySpecField.createMany({ data: specFields.map((field, position) => ({ categoryId: row.id, label: field.label, example: field.example, compatibility: !!field.compatibility, powerAdvice: !!field.powerAdvice, position })) });
+          if (specFields.length) await client.categorySpecField.createMany({ data: specFields.map((field, position) => ({ categoryId: row.id, label: field.label, example: field.example, hint: field.hint ?? "", compatibility: !!field.compatibility, powerAdvice: !!field.powerAdvice, position })) });
         }
-        return { row, specFields: specFields ?? existing?.specFields ?? toSpecFields(await client.categorySpecField.findMany({ where: { categoryId: row.id } })) };
+        return { row, specFields: specFields ?? (existing && "specFields" in existing ? existing.specFields : undefined) ?? toSpecFields(await client.categorySpecField.findMany({ where: { categoryId: row.id } })) };
       };
       const { row, specFields: savedFields } = tx ? await write(tx) : await prisma.$transaction(write);
       const old = directory.categories.find((entry) => entry.slug === row.slug);

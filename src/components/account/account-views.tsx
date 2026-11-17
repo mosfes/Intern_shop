@@ -20,7 +20,7 @@ import { useFeedback } from "@/components/feedback-provider";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import {
   BankIcon,
   CalendarIcon,
@@ -42,6 +42,7 @@ import { ProductCardSkeleton } from "@/components/catalog/catalog-skeleton";
 import { useCatalog } from "@/components/catalog-provider";
 import { formatBaht, formatThaiDate } from "@/lib/format";
 import { AdminOrderNotice } from "@/components/account/admin-order-notice";
+import { AddressBook } from "@/components/account/address-book";
 import { AdminTwoFactor } from "@/components/account/admin-two-factor";
 import { storeActions, useHydrated, useIsAdmin, useStore } from "@/lib/store";
 import type { OrderStatus } from "@/lib/types";
@@ -141,6 +142,13 @@ export function OrdersView() {
   const orders = useStore((s) => s.orders);
   const isAdmin = useIsAdmin();
   const { productMap } = useCatalog();
+  useEffect(() => {
+    void storeActions.refreshOrders();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void storeActions.refreshOrders();
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
   if (!hydrated) return <Skeleton className="h-48 rounded-xl" />;
   if (isAdmin) return <AdminOrderNotice />;
   if (orders.length === 0) {
@@ -268,6 +276,12 @@ export function OrdersView() {
                       <span>ราคาสินค้า ({itemCount} ชิ้น)</span>
                       <span>{formatBaht(o.subtotal)}</span>
                     </div>
+                    {!!o.discount && (
+                      <div className="flex justify-between text-success">
+                        <span>โค้ดส่วนลด{o.discountCode ? ` (${o.discountCode})` : ""}</span>
+                        <span>-{formatBaht(o.discount)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-muted">
                       <span>ค่าจัดส่ง</span>
                       <span className={o.shipping === 0 ? "font-medium text-success" : ""}>
@@ -415,6 +429,7 @@ export function ProfileView() {
           </div>
         </Form>
       </Card>
+      {user.role !== "admin" && user.googleId && <AddressBook user={user} className="lg:col-start-2" />}
       {user.role === "admin" && <AdminTwoFactor className="lg:col-span-2 xl:col-span-1" />}
     </div>
   );

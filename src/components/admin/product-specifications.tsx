@@ -42,7 +42,7 @@ export function ProductSpecifications({ templates, specifications, legacyHighlig
           </Checkbox>
           <button type="button" disabled={pending} aria-label={`ลบสเปก ${index + 1}`} onClick={() => onSpecificationsChange(specifications.filter((row) => row.id !== spec.id))} className="justify-self-end rounded-lg p-2 text-muted hover:bg-danger-soft hover:text-danger disabled:opacity-50"><TrashIcon size={17} /></button>
         </div>
-        {template && (template.compatibility || template.powerAdvice || template.example) && <p id={`spec-hint-${spec.id}`} className="mt-2 text-xs text-muted">{template.compatibility && <span className="mr-2 text-accent">ใช้ตรวจความเข้ากันได้</span>}{template.powerAdvice && <span className="mr-2 text-accent">ใช้แสดงคำแนะนำกำลังไฟ</span>}{template.example && <>เช่น {template.example}</>}</p>}
+        {template && (template.compatibility || template.powerAdvice || template.hint || template.example) && <p id={`spec-hint-${spec.id}`} className="mt-2 text-xs text-muted">{template.compatibility && <span className="mr-2 text-accent">ใช้ตรวจความเข้ากันได้</span>}{template.powerAdvice && <span className="mr-2 text-accent">ใช้แสดงคำแนะนำกำลังไฟ</span>}{template.hint}{template.hint && template.example && " · "}{template.example && <>เช่น {template.example}</>}</p>}
         {tooLong && <p className="mt-2 text-xs text-danger">ย่อข้อความให้ไม่เกิน 1,000 ตัวอักษรก่อนเลือกเป็นจุดเด่น</p>}
       </div>;
     })}

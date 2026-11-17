@@ -1,6 +1,6 @@
 "use client";
 
-import { Chip, Modal, Switch } from "@heroui/react";
+import { Chip, Modal } from "@heroui/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -52,12 +52,6 @@ export function PromotionDirectory() {
     finally { setPending(false); }
   }
 
-  const toggle = (row: Promotion, active: boolean) => run(async () => {
-    setRows((current) => current && current.map((entry) => entry.id === row.id ? { ...entry, active } : entry));
-    try { setRows((await send("PATCH", { action: "toggle", id: row.id, active })).promotions); }
-    catch (cause) { await refresh(); throw cause; }
-  });
-
   const move = (list: Promotion[], index: number, offset: number) => run(async () => {
     const ids = list.map((row) => row.id);
     [ids[index], ids[index + offset]] = [ids[index + offset], ids[index]];
@@ -98,7 +92,6 @@ export function PromotionDirectory() {
             <p className="truncate font-mono text-xs text-muted">{row.ctaHref}</p>
           </div>
           <div className="ml-auto flex items-center gap-1">
-            <Switch aria-label={`แสดง ${row.title} บนหน้าร้าน`} size="sm" isSelected={row.active} isDisabled={pending} onChange={(active) => void toggle(row, active)} className="mr-2"><Switch.Control><Switch.Thumb /></Switch.Control></Switch>
             <button type="button" disabled={pending} aria-label={`แก้ไข ${row.title}`} onClick={() => setEditor({ promotion: row, placement: row.placement })} className="rounded-lg p-2 text-muted hover:bg-accent-soft hover:text-accent disabled:opacity-50"><EditIcon size={17} /></button>
             <button type="button" disabled={pending} aria-label={`ลบ ${row.title}`} onClick={() => { setDeleting(row); setDeleteError(""); }} className="rounded-lg p-2 text-muted hover:bg-danger-soft hover:text-danger disabled:opacity-30"><TrashIcon size={17} /></button>
           </div>

@@ -15,7 +15,7 @@ export default function GoogleLoginComplete() {
         if (user.mustChangePassword) { window.location.replace("/change-password"); return; }
         storeActions.signIn(user);
         const next = takePostLoginPath();
-        window.location.replace(user.role === "admin" ? "/admin" : next ?? "/profile");
+        window.location.replace(user.role === "admin" ? "/admin" : next ?? "/");
       })
       .catch(() => { if (active) window.location.replace("/login?error=google_login"); });
     return () => { active = false; };

@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Card, Checkbox, Label, NumberField, Skeleton, Tooltip, buttonVariants, toast } from "@heroui/react";
+import { Button, Card, Checkbox, Label, Modal, NumberField, Skeleton, Tooltip, buttonVariants, toast } from "@heroui/react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightIcon, CartIcon, CheckCircleIcon, ShieldIcon, TrashIcon } from "@/components/icons";
@@ -10,6 +11,7 @@ import { useCatalog } from "@/components/catalog-provider";
 import { FREE_SHIPPING_THRESHOLD, formatBaht } from "@/lib/format";
 import type { Category } from "@/lib/types";
 import { AdminOrderNotice } from "@/components/account/admin-order-notice";
+import { MAX_LINE_QUANTITY } from "@/lib/cart-limits";
 import { CHECKOUT_LOGIN_HREF } from "@/lib/auth-redirect";
 import { cartDetails, storeActions, useCartLines, useHydrated, useIsAdmin, useStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
@@ -20,6 +22,7 @@ export function CartView() {
   const isAdmin = useIsAdmin();
   const signedIn = useStore((s) => s.user !== null);
   const router = useRouter();
+  const [confirmingClear, setConfirmingClear] = useState(false);
   const lines = useCartLines();
   const { productMap, getProductsByTag, categories } = useCatalog();
   const { items, selectedItems, subtotal, savings, count, selectedCount } = cartDetails(lines, productMap);
@@ -94,17 +97,39 @@ export function CartView() {
               </Label>
             </Checkbox.Content>
           </Checkbox>
-          <Button
-            size="sm"
-            variant="ghost"
-            onPress={() => {
-              storeActions.clearCart();
-              toast("ล้างตะกร้าสินค้าแล้ว");
-            }}
-          >
+          <Button size="sm" variant="ghost" onPress={() => setConfirmingClear(true)}>
             ล้างตะกร้า
           </Button>
         </div>
+        <Modal.Backdrop isOpen={confirmingClear} onOpenChange={setConfirmingClear}>
+          <Modal.Container size="sm" placement="center">
+            <Modal.Dialog className="rounded-2xl bg-overlay p-0 text-foreground">
+              <Modal.CloseTrigger aria-label="ปิด" />
+              <Modal.Header className="px-6 pt-6">
+                <Modal.Heading>ล้างตะกร้าสินค้า</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body className="px-6 py-4">
+                <p className="text-sm">ต้องการนำสินค้าทั้งหมด {items.length} รายการ ({count} ชิ้น) ออกจากตะกร้าหรือไม่?</p>
+                <p className="mt-2 text-sm text-muted">การดำเนินการนี้ไม่สามารถเลิกทำได้</p>
+              </Modal.Body>
+              <Modal.Footer className="flex justify-end gap-3 border-t border-border px-6 py-4">
+                <Button variant="ghost" onPress={() => setConfirmingClear(false)}>
+                  ยกเลิก
+                </Button>
+                <Button
+                  variant="danger"
+                  onPress={() => {
+                    storeActions.clearCart();
+                    setConfirmingClear(false);
+                    toast("ล้างตะกร้าสินค้าแล้ว");
+                  }}
+                >
+                  ยืนยันล้างตะกร้า
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
         {items.map(({ product, quantity, selected }) => (
           <Card
             key={product.id}
@@ -146,11 +171,16 @@ export function CartView() {
                     className="text-muted hover:text-danger"
                     onPress={() => {
                       storeActions.removeFromCart(product.id);
+                      let undone = false; // the toast button can be pressed repeatedly; restore only once
                       toast("นำสินค้าออกจากตะกร้าแล้ว", {
                         description: product.name,
                         actionProps: {
                           children: "เลิกทำ",
-                          onPress: () => storeActions.addToCart(product, quantity),
+                          onPress: () => {
+                            if (undone) return;
+                            undone = true;
+                            storeActions.restoreLine(product, quantity, selected);
+                          },
                         },
                       });
                     }}
@@ -167,13 +197,13 @@ export function CartView() {
                     value={quantity}
                     minValue={1}
                     formatOptions={{ maximumFractionDigits: 0 }}
-                    maxValue={product.stock}
+                    maxValue={Math.min(product.stock, MAX_LINE_QUANTITY)}
                     onChange={(v) => Number.isFinite(v) && storeActions.setQuantity(product, v)}
-                    className="w-28"
+                    className="w-40"
                   >
                     <NumberField.Group>
                       <NumberField.DecrementButton />
-                      <NumberField.Input className="text-center" />
+                      <NumberField.Input className="min-w-0 flex-1 px-2 text-center" />
                       <NumberField.IncrementButton />
                     </NumberField.Group>
                   </NumberField>

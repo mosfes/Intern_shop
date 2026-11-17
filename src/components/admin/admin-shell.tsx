@@ -9,7 +9,7 @@ import { storeActions } from "@/lib/store";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Container } from "@/components/ui/section";
 
-export type AdminSection = "overview" | "customer" | "admin" | "products" | "categories" | "brands" | "promotions";
+export type AdminSection = "overview" | "customer" | "admin" | "products" | "categories" | "brands" | "promotions" | "discounts";
 export type AdminIdentity = { name: string; email: string; picture?: string | null };
 
 type MenuItem = { id: AdminSection; label: string; icon: typeof GridIcon };
@@ -24,6 +24,7 @@ const menu: (MenuItem | MenuGroup)[] = [
   ] },
   { id: "storefront", label: "หน้าร้าน", icon: GridIcon, children: [
     { id: "promotions", label: "โปรโมชัน", icon: BoltIcon },
+    { id: "discounts", label: "โค้ดส่วนลด", icon: TagIcon },
   ] },
   { id: "users", label: "จัดการผู้ใช้", icon: UsersIcon, children: [
     { id: "customer", label: "ลูกค้า", icon: UserIcon },
