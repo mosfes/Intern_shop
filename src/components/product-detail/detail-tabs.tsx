@@ -56,13 +56,6 @@ export function DetailTabs({ product }: { product: Product }) {
                 </li>
               ))}
             </ul>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {product.shortSpecs.map((s) => (
-                <Chip key={s} size="sm" variant="soft">
-                  {s}
-                </Chip>
-              ))}
-            </div>
           </div>
         </div>
       </Tabs.Panel>

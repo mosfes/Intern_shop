@@ -4,16 +4,17 @@ import { Button, Checkbox, CheckboxGroup, Label, Separator, Slider } from "@hero
 import { useCatalog } from "@/components/catalog-provider";
 import { PRICE_MIN } from "@/lib/catalog";
 import { formatBaht } from "@/lib/format";
-import type { CatalogFilters } from "@/lib/search";
+import { filterProducts, type CatalogFilters } from "@/lib/search";
+import { facetOptions, facetsForCategory, pruneSpecs } from "@/lib/spec-filters";
 import type { CategorySlug } from "@/lib/types";
 
 export function defaultFilters(priceMax: number): CatalogFilters {
-  return { categories: [], brands: [], price: [PRICE_MIN, priceMax], inStockOnly: false, onSaleOnly: false };
+  return { categories: [], brands: [], price: [PRICE_MIN, priceMax], inStockOnly: false, onSaleOnly: false, specs: {} };
 }
 
-function FilterCheckbox({ value, label, count }: { value: string; label: string; count?: number }) {
+function FilterCheckbox({ value, label, count, dim }: { value: string; label: string; count?: number; dim?: boolean }) {
   return (
-    <Checkbox value={value} className="w-full">
+    <Checkbox value={value} className={dim ? "w-full opacity-50" : "w-full"}>
       <Checkbox.Content className="w-full">
         <Checkbox.Control>
           <Checkbox.Indicator />
@@ -43,14 +44,35 @@ export function FilterPanel({
   onChange: (f: CatalogFilters) => void;
   onReset: () => void;
 }) {
-  const { categories, categoryMap, categoryCounts, priceMax, brandsForCategories } = useCatalog();
+  const { products, categories, categoryMap, categoryCounts, priceMax, brandsForCategories } = useCatalog();
   const set = <K extends keyof CatalogFilters>(key: K, value: CatalogFilters[K]) => onChange({ ...filters, [key]: value });
   const availableBrands = brandsForCategories(filters.categories);
 
   // Changing categories drops any selected brand that no longer has products in the new scope.
   const setCategories = (next: CategorySlug[]) => {
     const allowed = new Set(brandsForCategories(next).map((b) => b.brand));
-    onChange({ ...filters, categories: next, brands: filters.brands.filter((b) => allowed.has(b)) });
+    onChange({
+      ...filters,
+      categories: next,
+      brands: filters.brands.filter((b) => allowed.has(b)),
+      specs: pruneSpecs(filters.specs, next),
+    });
+  };
+
+  // Sub-filters for each selected category; a facet with a single value can't narrow anything, so it's hidden.
+  const specGroups = filters.categories.flatMap((slug) => {
+    const facets = facetsForCategory(slug)
+      .map((facet) => {
+        const { [facet.key]: _omit, ...otherSpecs } = filters.specs; // eslint-disable-line @typescript-eslint/no-unused-vars
+        const scoped = filterProducts(products, { ...filters, specs: otherSpecs });
+        return { facet, options: facetOptions(facet, products, scoped) };
+      })
+      .filter(({ facet, options }) => options.length > 1 || (filters.specs[facet.key]?.length ?? 0) > 0);
+    return facets.length ? [{ slug, facets }] : [];
+  });
+  const setSpec = (key: string, values: string[]) => {
+    const { [key]: _omit, ...rest } = filters.specs; // eslint-disable-line @typescript-eslint/no-unused-vars
+    onChange({ ...filters, specs: values.length ? { ...rest, [key]: values } : rest });
   };
 
   return (
@@ -74,6 +96,29 @@ export function FilterPanel({
           ))}
         </CheckboxGroup>
       </Group>
+
+      {specGroups.map(({ slug, facets }) => (
+        <div key={slug} className="space-y-5">
+          <Separator />
+          {filters.categories.length > 1 && (
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">สเปก{categoryMap.get(slug)?.nameTh ?? slug}</p>
+          )}
+          {facets.map(({ facet, options }) => (
+            <Group key={facet.key} title={facet.title}>
+              <CheckboxGroup
+                aria-label={facet.title}
+                value={filters.specs[facet.key] ?? []}
+                onChange={(v) => setSpec(facet.key, v)}
+                className="gap-2.5"
+              >
+                {options.map((o) => (
+                  <FilterCheckbox key={o.value} value={o.value} label={o.value} count={o.count} dim={o.count === 0} />
+                ))}
+              </CheckboxGroup>
+            </Group>
+          ))}
+        </div>
+      ))}
 
       <Separator />
 

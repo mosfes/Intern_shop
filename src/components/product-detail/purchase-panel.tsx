@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Chip, Label, NumberField, Separator } from "@heroui/react";
+import { Button, Chip, Label, NumberField, Separator, toast } from "@heroui/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -8,12 +8,15 @@ import { BoltIcon, CheckIcon, RefreshIcon, ShieldIcon, TruckIcon } from "@/compo
 import { AddToCartButton, Price, Rating, StockChip, WishlistButton } from "@/components/product/product-bits";
 import { useCatalog } from "@/components/catalog-provider";
 import { formatBaht } from "@/lib/format";
-import { storeActions } from "@/lib/store";
+import { CHECKOUT_LOGIN_HREF } from "@/lib/auth-redirect";
+import { ADMIN_ORDER_BLOCKED_MESSAGE, storeActions, useIsAdmin, useStore } from "@/lib/store";
 import type { Product } from "@/lib/types";
 
 export function PurchasePanel({ product }: { product: Product }) {
   const [qty, setQty] = useState(1);
   const router = useRouter();
+  const isAdmin = useIsAdmin();
+  const signedIn = useStore((s) => s.user !== null);
   const soldOut = product.stock <= 0;
   const category = useCatalog().categoryMap.get(product.category);
 
@@ -50,17 +53,15 @@ export function PurchasePanel({ product }: { product: Product }) {
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <Price product={product} size="lg" />
+        <Price product={product} size="lg" />
+        <p className="mt-1 text-xs text-muted">ราคารวม VAT</p>
+        <div className="mt-3 grid w-fit auto-cols-fr grid-flow-col items-center gap-2 *:w-full *:justify-center *:whitespace-nowrap">
+          <StockChip stock={product.stock} size="md" />
           {product.discount > 0 && (
-            <Chip variant="primary" color="danger" size="sm">
+            <Chip variant="primary" color="danger" size="md">
               ประหยัด {formatBaht(product.originalPrice - product.price)}
             </Chip>
           )}
-        </div>
-        <p className="mt-1 text-xs text-muted">ราคารวม VAT</p>
-        <div className="mt-3">
-          <StockChip stock={product.stock} size="md" />
         </div>
       </div>
 
@@ -75,7 +76,7 @@ export function PurchasePanel({ product }: { product: Product }) {
 
       <Separator />
 
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="grid gap-3 sm:flex sm:items-end">
         <NumberField
           value={qty}
           onChange={(v) => setQty(Number.isFinite(v) ? v : 1)}
@@ -83,17 +84,17 @@ export function PurchasePanel({ product }: { product: Product }) {
           formatOptions={{ maximumFractionDigits: 0 }}
           maxValue={Math.max(1, product.stock)}
           isDisabled={soldOut}
-          className="w-36"
+          className="flex w-full flex-row items-center justify-between gap-3 sm:flex-col sm:items-stretch sm:w-36 sm:shrink-0"
         >
           <Label>จำนวน</Label>
-          <NumberField.Group>
+          <NumberField.Group className="h-12 w-36 sm:w-full">
             <NumberField.DecrementButton />
             <NumberField.Input className="text-center" />
             <NumberField.IncrementButton />
           </NumberField.Group>
         </NumberField>
-        <div className="flex min-w-[200px] flex-1 gap-2">
-          <div className="flex-1">
+        <div className="flex flex-1 gap-2">
+          <div className="flex-1 [&>button]:h-12">
             <AddToCartButton product={product} quantity={qty} fullWidth size="lg" />
           </div>
           <WishlistButton product={product} className="size-12 rounded-xl" />
@@ -105,7 +106,16 @@ export function PurchasePanel({ product }: { product: Product }) {
         fullWidth
         isDisabled={soldOut}
         onPress={() => {
+          if (isAdmin) {
+            toast.danger(ADMIN_ORDER_BLOCKED_MESSAGE);
+            return;
+          }
           storeActions.addToCart(product, qty);
+          if (!signedIn) {
+            toast("กรุณาเข้าสู่ระบบก่อนสั่งซื้อ", { description: "เพิ่มสินค้าลงตะกร้าให้แล้ว" });
+            router.push(CHECKOUT_LOGIN_HREF);
+            return;
+          }
           router.push("/checkout");
         }}
       >

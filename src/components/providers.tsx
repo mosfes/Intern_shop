@@ -3,8 +3,10 @@
 import { RouterProvider, Toast } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { FeedbackProvider } from "@/components/feedback-provider";
 import { CatalogProvider } from "@/components/catalog-provider";
 import { QuickViewProvider } from "@/components/product/quick-view";
+import { GoogleSessionSync } from "@/components/account/google-session-sync";
 import type { CatalogData } from "@/lib/catalog";
 
 declare module "react-aria-components" {
@@ -17,8 +19,9 @@ export function Providers({ catalog, children }: { catalog: CatalogData; childre
   const router = useRouter();
   return (
     <RouterProvider navigate={router.push}>
+      <GoogleSessionSync />
       <CatalogProvider data={catalog}>
-        <QuickViewProvider>{children}</QuickViewProvider>
+        <FeedbackProvider><QuickViewProvider>{children}</QuickViewProvider></FeedbackProvider>
       </CatalogProvider>
       <Toast.Provider placement="bottom end" />
     </RouterProvider>

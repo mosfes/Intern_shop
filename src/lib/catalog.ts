@@ -4,6 +4,18 @@ import type { Category, CategorySlug, Product, ProductTag } from "./types";
 export interface CatalogData {
   products: Product[];
   categories: Category[];
+  /** Brand slugs that have an uploaded logo in R2 (brands/<slug>) — see brandSlug(). */
+  logoSlugs?: string[];
+  brandAssets?: { name: string; logoUrl: string | null }[];
+}
+
+/** "Western Digital" → "western-digital". Must match the admin app, which names the R2 logo file with it. */
+export function brandSlug(brand: string) {
+  return brand
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export const PRICE_MIN = 0;
@@ -12,7 +24,9 @@ export const PRICE_MIN = 0;
  * Lookups and helpers derived from the catalogue. Works on both server and client:
  * server components build it from `getCatalog()`, client components get it from `useCatalog()`.
  */
-export function buildCatalog({ products, categories }: CatalogData) {
+export function buildCatalog({ products, categories, logoSlugs = [], brandAssets = [] }: CatalogData) {
+  const logoSet = new Set(logoSlugs);
+  const customLogos = new Map(brandAssets.filter((brand) => brand.logoUrl).map((brand) => [brand.name.toLocaleLowerCase(), brand.logoUrl!]));
   const productMap = new Map(products.map((p) => [p.id, p]));
   const productBySlug = new Map(products.map((p) => [p.slug, p]));
   const categoryMap = new Map(categories.map((c) => [c.slug, c]));
@@ -29,8 +43,17 @@ export function buildCatalog({ products, categories }: CatalogData) {
     productBySlug,
     categoryMap,
     brands,
+    managedBrands: brandAssets.map(({ name }) => name),
     priceMax,
     categoryCounts,
+
+    /** Same-origin URL of a logo uploaded through the admin, or null (see the /brand-logos rewrite in next.config.ts). */
+    uploadedLogoUrl(brand: string) {
+      const custom = customLogos.get(brand.toLocaleLowerCase());
+      if (custom) return custom;
+      const slug = brandSlug(brand);
+      return logoSet.has(slug) ? `/brand-logos/${slug}` : null;
+    },
 
     isCategorySlug(value: string | null | undefined): value is CategorySlug {
       return !!value && categoryMap.has(value);

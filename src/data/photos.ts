@@ -31,6 +31,6 @@ export const scenePhotos = {
   rig: productPhotos("lian-li-o11-dynamic-evo")[0],
   ssd: "/images/promotions/ssd-transparent.webp",
   mouse: "/images/promotions/mouse-transparent.webp",
-  motherboard: productPhotos("asus-rog-strix-x870e-e-gaming-wifi")[0],
-  cooling: productPhotos("arctic-liquid-freezer-iii-360")[0],
+  motherboard: "/images/promotions/motherboard-transparent.webp",
+  cooling: "/images/promotions/cooling-transparent.webp",
 };

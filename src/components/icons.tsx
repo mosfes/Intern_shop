@@ -56,11 +56,16 @@ export const MinusIcon = base(<path d="M5 12h14" />);
 export const EyeIcon = base(<><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>);
 export const BoltIcon = base(<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />);
 export const PackageIcon = base(<><path d="m3 7 9-4 9 4v10l-9 4-9-4V7z" /><path d="m3 7 9 4 9-4M12 11v10" /></>);
+export const EditIcon = base(<><path d="M12 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" /><path d="m16 3 5 5M10 14l-1 4 4-1L22 8a3.5 3.5 0 0 0-5-5z" /></>);
+export const StoreIcon = base(<><path d="M4 9.5 5.5 4h13L20 9.5" /><path d="M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0" /><path d="M5 12.5V20h14v-7.5M10 20v-4.5h4V20" /></>);
+export const UsersIcon = base(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-5.8 6.5-5.8s6.5 2.2 6.5 5.8" /><path d="M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.6c2.2.7 3.5 2.4 3.5 5.4" /></>);
+export const TagIcon = base(<><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9z" /><circle cx="8" cy="8" r="1.5" /></>);
 export const LogoutIcon = base(<><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" /><path d="M10 17l-5-5 5-5M5 12h11" /></>);
 export const MapPinIcon = base(<><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></>);
 export const PhoneIcon = base(<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />);
 export const MailIcon = base(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></>);
-export const SparkleIcon = base(<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z" />);
+export const CalendarIcon = base(<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>);
+export const SparkleIcon =base(<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z" />);
 
 export function StarIcon({ size = 14, filled = true, ...props }: IconProps & { filled?: boolean }) {
   return (
@@ -72,6 +77,17 @@ export function StarIcon({ size = 14, filled = true, ...props }: IconProps & { f
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+export function GoogleIcon({ size = 20, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...props}>
+      <path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z" />
+      <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.92l-3.88-3a7.2 7.2 0 0 1-10.7-3.78H1.34v3.1A12 12 0 0 0 12 24z" />
+      <path fill="#FBBC05" d="M5.36 14.3a7.2 7.2 0 0 1 0-4.6v-3.1H1.34a12 12 0 0 0 0 10.8l4.02-3.1z" />
+      <path fill="#EA4335" d="M12 4.77c1.76 0 3.34.6 4.58 1.8l3.44-3.44A11.5 11.5 0 0 0 12 0 12 12 0 0 0 1.34 6.6l4.02 3.1A7.2 7.2 0 0 1 12 4.77z" />
     </svg>
   );
 }

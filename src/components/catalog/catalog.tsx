@@ -19,6 +19,7 @@ import { CloseIcon, FilterIcon, GridIcon, ListIcon, SearchIcon } from "@/compone
 import { ProductCard } from "@/components/product/product-card";
 import { useCatalog } from "@/components/catalog-provider";
 import { PRICE_MIN } from "@/lib/catalog";
+import { facetMap, pruneSpecs } from "@/lib/spec-filters";
 import { formatBaht } from "@/lib/format";
 import { filterProducts, searchProducts, sortOptions, sortProducts, type CatalogFilters, type SortKey } from "@/lib/search";
 import { BrandPicker } from "./brand-picker";
@@ -58,24 +59,41 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
   const reset = () => update(defaultFilters(priceMax));
 
   const singleCategory = (filters.categories.length === 1 && categoryMap.get(filters.categories[0])) || null;
+  const categoryTitle =
+    filters.categories.length === 0
+      ? ""
+      : filters.categories.length === 1
+        ? (categoryMap.get(filters.categories[0])?.nameTh ?? filters.categories[0])
+        : `${filters.categories.length} หมวดหมู่ที่เลือก`;
   const availableBrands = useMemo(() => brandsForCategories(filters.categories), [brandsForCategories, filters.categories]);
-  const title = mode === "search" ? (query ? `ผลการค้นหา “${query}”` : "ค้นหาสินค้า") : singleCategory?.nameTh ?? "สินค้าทั้งหมด";
-  const description =
-    mode === "search"
-      ? "ค้นหาจากชื่อสินค้า แบรนด์ หมวดหมู่ หรือสเปก"
-      : singleCategory?.description ?? "อุปกรณ์คอมพิวเตอร์คุณภาพสูง คัดสรรจากแบรนด์ชั้นนำ";
+  const title = mode === "search" ? (query ? `ผลการค้นหา “${query}”` : "ค้นหาสินค้า") : categoryTitle || "สินค้าทั้งหมด";
+  const description = mode === "search" ? "ค้นหาจากชื่อสินค้า แบรนด์ หมวดหมู่ หรือสเปก" : null;
 
   const activeChips: { key: string; label: string; clear: () => void }[] = [
     ...filters.categories.map((c) => ({
       key: `c-${c}`,
       label: categoryMap.get(c)?.nameTh ?? c,
-      clear: () => update({ ...filters, categories: filters.categories.filter((x) => x !== c) }),
+      clear: () => {
+        const categories = filters.categories.filter((x) => x !== c);
+        update({ ...filters, categories, specs: pruneSpecs(filters.specs, categories) });
+      },
     })),
     ...filters.brands.map((b) => ({
       key: `b-${b}`,
       label: b,
       clear: () => update({ ...filters, brands: filters.brands.filter((x) => x !== b) }),
     })),
+    ...Object.entries(filters.specs).flatMap(([key, values]) =>
+      values.map((v) => ({
+        key: `s-${key}-${v}`,
+        label: `${facetMap.get(key)?.title ?? key}: ${v}`,
+        clear: () => {
+          const rest = values.filter((x) => x !== v);
+          const { [key]: _omit, ...others } = filters.specs; // eslint-disable-line @typescript-eslint/no-unused-vars
+          update({ ...filters, specs: rest.length ? { ...others, [key]: rest } : others });
+        },
+      })),
+    ),
     ...(filters.price[0] !== PRICE_MIN || filters.price[1] !== priceMax
       ? [
           {
@@ -100,12 +118,12 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
         <Breadcrumbs.Item href="/">หน้าแรก</Breadcrumbs.Item>
         {mode === "search" ? (
           <Breadcrumbs.Item>ค้นหา</Breadcrumbs.Item>
-        ) : singleCategory ? (
+        ) : categoryTitle ? (
           [
             <Breadcrumbs.Item key="all" href="/products">
               สินค้าทั้งหมด
             </Breadcrumbs.Item>,
-            <Breadcrumbs.Item key="cat">{singleCategory.nameTh}</Breadcrumbs.Item>,
+            <Breadcrumbs.Item key="cat">{categoryTitle}</Breadcrumbs.Item>,
           ]
         ) : (
           <Breadcrumbs.Item>สินค้าทั้งหมด</Breadcrumbs.Item>
@@ -115,7 +133,7 @@ export function Catalog({ mode, initialFilters, initialQuery = "", initialSort =
       <header className="mb-6 flex flex-col gap-4 sm:mb-8">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
-          <p className="mt-2 text-muted">{description}</p>
+          {description && <p className="mt-2 text-muted">{description}</p>}
         </div>
         {mode === "search" && (
           <SearchField

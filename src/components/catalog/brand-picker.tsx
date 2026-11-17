@@ -2,42 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, GridIcon } from "@/components/icons";
-import { brandLogoMap } from "@/data/brand-logos";
+import { BrandMark } from "@/components/ui/brand-mark";
 
 interface BrandOption {
   brand: string;
   count: number;
-}
-
-/** Logo drawn as a CSS mask so it takes the current text colour (works in light + dark). Falls back to a text wordmark. */
-function BrandMark({ brand }: { brand: string }) {
-  const logo = brandLogoMap[brand];
-  if (!logo) {
-    return (
-      <span className="line-clamp-2 max-w-full px-1 text-center text-[12px] font-extrabold uppercase leading-[1.1] tracking-wide">
-        {brand}
-      </span>
-    );
-  }
-  const h = logo.wordmark ? 16 : 26;
-  return (
-    <span
-      aria-hidden="true"
-      className="block shrink-0 bg-current"
-      style={{
-        height: h,
-        width: Math.min(h * logo.ratio, 84),
-        maskImage: `url(${logo.src})`,
-        WebkitMaskImage: `url(${logo.src})`,
-        maskSize: "contain",
-        WebkitMaskSize: "contain",
-        maskRepeat: "no-repeat",
-        WebkitMaskRepeat: "no-repeat",
-        maskPosition: "center",
-        WebkitMaskPosition: "center",
-      }}
-    />
-  );
 }
 
 const tileCls = (active: boolean) =>
@@ -45,7 +14,7 @@ const tileCls = (active: boolean) =>
     "group relative flex h-[76px] w-[112px] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-xl border px-2 outline-none transition-all",
     "focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-[124px]",
     active
-      ? "border-accent bg-accent/10 text-accent shadow-[0_0_0_1px_var(--accent)]"
+      ? "border-accent bg-accent/10 text-accent shadow-[inset_0_0_0_1px_var(--accent)]"
       : "border-border bg-surface text-muted hover:-translate-y-0.5 hover:border-accent/50 hover:text-foreground",
   ].join(" ");
 
@@ -101,9 +70,6 @@ export function BrandPicker({
       <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">{title}</h2>
-          <p className="text-xs text-muted">
-            {selected.length > 0 ? `เลือกแล้ว ${selected.length} จาก ${options.length} แบรนด์` : `${options.length} แบรนด์ · เลือกได้มากกว่า 1`}
-          </p>
         </div>
         {(edges.start || edges.end) && (
           <div className="hidden gap-1.5 sm:flex">

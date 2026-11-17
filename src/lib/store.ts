@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { CartLine, DemoUser, Order, Product } from "./types";
+import type { PcBuild } from "./pc-builder";
 
 /**
  * Tiny client-side store persisted to localStorage.
@@ -9,15 +10,23 @@ import type { CartLine, DemoUser, Order, Product } from "./types";
  * and the persisted state is applied right after hydration (no mismatch).
  */
 interface StoreState {
+  pcBuild: PcBuild;
   cart: CartLine[];
   wishlist: string[];
   user: DemoUser | null;
   orders: Order[];
+  /** Account whose saved (server) cart this browser's cart mirrors; null = a guest cart. */
+  cartOwner: string | null;
+  /** Local cart edits the server hasn't confirmed yet. */
+  cartDirty: boolean;
 }
 
 // v2: product ids now come from mockapi ("1", "2"…) instead of "p001" — old carts are dropped.
 const STORAGE_KEY = "corebyte-store-v2";
-const EMPTY: StoreState = { cart: [], wishlist: [], user: null, orders: [] };
+const EMPTY: StoreState = { cart: [], wishlist: [], user: null, orders: [], pcBuild: {}, cartOwner: null, cartDirty: false };
+
+/** Shown wherever an admin account tries to shop; admins manage the store, they don't order from it. */
+export const ADMIN_ORDER_BLOCKED_MESSAGE = "บัญชีแอดมินไม่สามารถสั่งซื้อสินค้าได้ กรุณาใช้บัญชีลูกค้า";
 
 let state: StoreState = EMPTY;
 let loaded = false;
@@ -32,10 +41,13 @@ function load() {
       const parsed = JSON.parse(raw) as Partial<StoreState>;
       // Ids that no longer exist in the catalogue are skipped where the cart/wishlist is rendered.
       state = {
+        pcBuild: parsed.pcBuild ?? {},
         cart: parsed.cart ?? [],
         wishlist: parsed.wishlist ?? [],
         user: parsed.user ?? null,
         orders: parsed.orders ?? [],
+        cartOwner: parsed.cartOwner ?? null,
+        cartDirty: parsed.cartDirty ?? false,
       };
     }
   } catch {
@@ -43,9 +55,15 @@ function load() {
   }
 }
 
-function setState(updater: (s: StoreState) => StoreState) {
+function setState(updater: (s: StoreState) => StoreState, fromServer = false) {
   load();
+  const previousCart = state.cart;
   state = updater(state);
+  // A local cart edit on a synced account must be saved to the server.
+  if (!fromServer && state.cart !== previousCart && state.user?.googleId && state.cartOwner === state.user.googleId) {
+    state = { ...state, cartDirty: true };
+    scheduleCartPush();
+  }
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
@@ -91,16 +109,123 @@ export function useHydrated() {
 }
 const noopSubscribe = () => () => {};
 
+// ---------------------------------------------------------------- cart <-> account sync
+// Signed-in customers' carts live in the database (/api/cart); localStorage stays the fast
+// working copy and the only copy for guests. Failures are silent: the cart keeps working
+// locally, stays flagged dirty, and is retried on the next refresh.
+const normalizeLines = (lines: CartLine[]) => lines.map((l) => ({ productId: l.productId, quantity: l.quantity, selected: l.selected !== false }));
+
+function mergeCarts(remote: CartLine[], local: CartLine[]): CartLine[] {
+  const merged = new Map(normalizeLines(remote).map((l) => [l.productId, l]));
+  for (const line of normalizeLines(local)) {
+    const existing = merged.get(line.productId);
+    if (existing) existing.quantity = Math.max(existing.quantity, line.quantity);
+    else merged.set(line.productId, line);
+  }
+  return [...merged.values()];
+}
+
+const cartKey = (lines: CartLine[]) =>
+  JSON.stringify(normalizeLines(lines).sort((a, b) => a.productId.localeCompare(b.productId)));
+
+let pushTimer: ReturnType<typeof setTimeout> | null = null;
+let inflightPush: Promise<void> | null = null;
+let pulling = false;
+
+function syncedAccount() {
+  const user = state.user;
+  return user?.googleId && user.role !== "admin" ? user.googleId : null;
+}
+
+function scheduleCartPush(delay = 600) {
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => void flushCart(), delay);
+}
+
+function flushCart(): Promise<void> {
+  if (pushTimer) {
+    clearTimeout(pushTimer);
+    pushTimer = null;
+  }
+  if (inflightPush) return inflightPush.then(flushCart); // then send anything newer
+  load();
+  const account = syncedAccount();
+  if (!account || state.cartOwner !== account || !state.cartDirty) return Promise.resolve();
+  const sent = state.cart;
+  inflightPush = fetch("/api/cart", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cart: normalizeLines(sent) }),
+  })
+    .then((response) => {
+      if (response.ok && state.cart === sent) setState((s) => ({ ...s, cartDirty: false }), true);
+    })
+    .catch(() => {})
+    .finally(() => {
+      inflightPush = null;
+    });
+  return inflightPush;
+}
+
+async function pullCart() {
+  load();
+  const account = syncedAccount();
+  if (!account || pulling) return;
+  pulling = true;
+  try {
+    const response = await fetch("/api/cart", { cache: "no-store" });
+    if (!response.ok) return;
+    const { cart: remote } = (await response.json()) as { cart: CartLine[] };
+    if (syncedAccount() !== account) return; // signed out or switched account meanwhile
+    const unsaved = state.cartOwner === account && state.cartDirty;
+    let next: CartLine[];
+    if (unsaved) next = state.cart; // offline/unsaved edits on this device win
+    else if (state.cartOwner === null) next = mergeCarts(remote, state.cart); // guest cart joins the account
+    else next = remote; // already mirrors this account (or another account's leftovers): server wins
+    const needsSave = unsaved || cartKey(next) !== cartKey(remote);
+    if (cartKey(next) !== cartKey(state.cart) || state.cartOwner !== account || state.cartDirty !== needsSave) {
+      setState((s) => ({ ...s, cart: cartKey(next) === cartKey(s.cart) ? s.cart : next, cartOwner: account, cartDirty: needsSave }), true);
+    }
+    if (needsSave) await flushCart();
+  } catch {
+    /* offline or table missing — keep the local cart */
+  } finally {
+    pulling = false;
+  }
+}
+
 // ---------------------------------------------------------------- actions
 export const storeActions = {
+  savePcBuild(pcBuild: PcBuild) {
+    setState((s) => ({ ...s, pcBuild }));
+  },
+  addBuildToCart(products: Product[]) {
+    load();
+    if (state.user?.role === "admin") return false;
+    if (!products.length || products.some((p) => p.stock <= (state.cart.find((line) => line.productId === p.id)?.quantity ?? 0))) return false;
+    setState((s) => {
+      const cart = s.cart.map((line) => ({ ...line }));
+      for (const product of products) {
+        const line = cart.find((item) => item.productId === product.id);
+        if (line) {
+          line.quantity += 1;
+          line.selected = true;
+        }
+        else cart.push({ productId: product.id, quantity: 1 });
+      }
+      return { ...s, cart };
+    });
+    return true;
+  },
   addToCart(product: Product, quantity = 1) {
+    if (state.user?.role === "admin") return false;
     if (product.stock <= 0) return false;
     const productId = product.id;
     setState((s) => {
       const existing = s.cart.find((l) => l.productId === productId);
       const cart = existing
         ? s.cart.map((l) =>
-            l.productId === productId ? { ...l, quantity: Math.min(product.stock, l.quantity + quantity) } : l,
+            l.productId === productId ? { ...l, quantity: Math.min(product.stock, l.quantity + quantity), selected: true } : l,
           )
         : [...s.cart, { productId, quantity: Math.min(product.stock, quantity) }];
       return { ...s, cart };
@@ -115,6 +240,15 @@ export const storeActions = {
         l.productId === productId ? { ...l, quantity: Math.max(1, Math.min(product.stock, quantity)) } : l,
       ),
     }));
+  },
+  toggleSelected(productId: string) {
+    setState((s) => ({
+      ...s,
+      cart: s.cart.map((l) => (l.productId === productId ? { ...l, selected: l.selected === false } : l)),
+    }));
+  },
+  setAllSelected(selected: boolean) {
+    setState((s) => ({ ...s, cart: s.cart.map((l) => ({ ...l, selected })) }));
   },
   removeFromCart(productId: string) {
     setState((s) => ({ ...s, cart: s.cart.filter((l) => l.productId !== productId) }));
@@ -137,18 +271,47 @@ export const storeActions = {
   signIn(user: DemoUser) {
     setState((s) => ({ ...s, user }));
   },
-  signOut() {
-    setState((s) => ({ ...s, user: null }));
+  async signOut() {
+    await flushCart(); // save any pending edits while the session cookie still exists
+    const response = await fetch("/api/auth/session", { method: "DELETE" });
+    if (!response.ok) throw new Error("Sign out failed");
+    // The saved cart stays with the account; this browser goes back to an empty guest cart.
+    setState((s) => ({ ...s, user: null, cart: [], cartOwner: null, cartDirty: false }), true);
+  },
+  syncGoogleUser(user: DemoUser | null) {
+    setState((s) => {
+      if (user) {
+        // Retain editable contact details for the same Google identity.
+        return { ...s, user: s.user?.googleId === user.googleId ? { ...s.user, ...user } : user };
+      }
+      // Session ended (e.g. expired): what's left here becomes a guest cart that merges on the next login.
+      return s.user?.googleId ? { ...s, user: null, cartOwner: null, cartDirty: false } : s;
+    });
+    void pullCart();
+  },
+  /** Re-reads the saved cart (e.g. when the tab regains focus), pushing local edits first if any. */
+  refreshCart() {
+    void pullCart();
   },
   updateUser(patch: Partial<DemoUser>) {
     setState((s) => (s.user ? { ...s, user: { ...s.user, ...patch } } : s));
   },
+  /** Returns false (and places nothing) for admin accounts and signed-out visitors. */
   placeOrder(order: Order) {
-    setState((s) => ({ ...s, orders: [order, ...s.orders], cart: [] }));
+    load();
+    if (!state.user || state.user.role === "admin") return false;
+    // Only the lines that were ordered leave the cart; unticked items stay for later.
+    const ordered = new Set(order.lines.map((l) => l.productId));
+    setState((s) => ({ ...s, orders: [order, ...s.orders], cart: s.cart.filter((l) => !ordered.has(l.productId)) }));
+    return true;
   },
 };
 
 // ---------------------------------------------------------------- selectors
+export function useIsAdmin() {
+  return useStore((s) => s.user?.role === "admin");
+}
+
 export function useCartLines() {
   return useStore((s) => s.cart);
 }
@@ -164,10 +327,13 @@ export function useIsWishlisted(productId: string) {
 export function cartDetails(lines: CartLine[], productMap: Map<string, Product>) {
   const items = lines.flatMap((l) => {
     const product = productMap.get(l.productId);
-    return product ? [{ ...l, product }] : [];
+    return product ? [{ ...l, selected: l.selected !== false, product }] : [];
   });
-  const subtotal = items.reduce((n, l) => n + l.product.price * l.quantity, 0);
-  const savings = items.reduce((n, l) => n + (l.product.originalPrice - l.product.price) * l.quantity, 0);
+  // Totals only cover ticked lines — those are what checkout will order.
+  const selectedItems = items.filter((l) => l.selected);
+  const subtotal = selectedItems.reduce((n, l) => n + l.product.price * l.quantity, 0);
+  const savings = selectedItems.reduce((n, l) => n + (l.product.originalPrice - l.product.price) * l.quantity, 0);
   const count = items.reduce((n, l) => n + l.quantity, 0);
-  return { items, subtotal, savings, count };
+  const selectedCount = selectedItems.reduce((n, l) => n + l.quantity, 0);
+  return { items, selectedItems, subtotal, savings, count, selectedCount };
 }

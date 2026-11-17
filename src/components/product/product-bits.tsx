@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { CartIcon, CheckIcon, HeartIcon, StarIcon } from "@/components/icons";
 import { formatBaht, stockStatus } from "@/lib/format";
-import { storeActions, useIsWishlisted } from "@/lib/store";
+import { ADMIN_ORDER_BLOCKED_MESSAGE, storeActions, useIsAdmin, useIsWishlisted } from "@/lib/store";
 import type { Product } from "@/lib/types";
 
 export function ProductImage({
@@ -22,15 +22,17 @@ export function ProductImage({
   className?: string;
 }) {
   return (
-    <Image
-      src={src}
-      alt={alt}
-      fill
-      sizes={sizes}
-      loading={priority ? "eager" : undefined}
-      fetchPriority={priority ? "high" : undefined}
-      className={`bg-white object-contain p-[8%] transition-transform duration-500 ease-out ${className ?? ""}`}
-    />
+    <div className="absolute inset-0 overflow-hidden bg-white">
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes={sizes}
+        loading={priority ? "eager" : undefined}
+        fetchPriority={priority ? "high" : undefined}
+        className={`object-contain p-[8%] transition-transform duration-500 ease-out motion-reduce:transform-none ${className ?? ""}`}
+      />
+    </div>
   );
 }
 
@@ -50,7 +52,7 @@ export function Rating({ value, count, size = 14 }: { value: number; count?: num
 
 export function Price({ product, size = "md" }: { product: Product; size?: "md" | "lg" }) {
   return (
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+    <div className={`flex flex-wrap gap-x-2 gap-y-0.5 ${size === "lg" ? "items-center" : "items-baseline"}`}>
       <span className={`font-semibold tracking-tight text-foreground ${size === "lg" ? "text-3xl" : "text-lg"}`}>
         {formatBaht(product.price)}
       </span>
@@ -125,6 +127,7 @@ export function AddToCartButton({
   compact?: boolean;
 }) {
   const [added, setAdded] = useState(false);
+  const isAdmin = useIsAdmin();
   const soldOut = product.stock <= 0;
   return (
     <Button
@@ -136,6 +139,10 @@ export function AddToCartButton({
       aria-label={compact ? label : undefined}
       className="transition-all duration-200"
       onPress={() => {
+        if (isAdmin) {
+          toast.danger(ADMIN_ORDER_BLOCKED_MESSAGE);
+          return;
+        }
         if (storeActions.addToCart(product, quantity)) {
           setAdded(true);
           window.setTimeout(() => setAdded(false), 1600);

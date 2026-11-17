@@ -1,0 +1,81 @@
+.edm-auth-showcase {
+  display: none; /* phones/tablets: form only; artwork shows beside the form from lg up */
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+/* Slanted back panel, same shape as the home hero banner. */
+.edm-auth-showcase::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 12%;
+  background: var(--surface-secondary);
+  clip-path: polygon(22% 0, 100% 0, 100% 100%, 0 100%);
+  pointer-events: none;
+}
+
+.edm-auth-artwork {
+  object-fit: contain;
+  object-position: center;
+  padding: 0 24px 28px;
+  filter: drop-shadow(0 5px 9px rgb(15 23 42 / 0.12));
+}
+
+.dark .edm-auth-artwork,
+[data-theme="dark"] .edm-auth-artwork {
+  filter: drop-shadow(0 5px 10px rgb(0 0 0 / 0.24));
+}
+
+@media (min-width: 1024px) {
+  .edm-auth-showcase {
+    display: block;
+    min-height: 640px;
+    min-width: 0;
+  }
+
+  .edm-auth-artwork {
+    padding: 20px 24px 36px 0;
+  }
+}
+
+.edm-auth-password-toggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.edm-auth-password {
+  position: relative;
+}
+
+.edm-auth-password input {
+  width: 100%;
+  padding-right: 48px;
+}
+
+.edm-auth-password-toggle {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 100%;
+  min-height: 36px;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.edm-auth-password-toggle:hover {
+  color: var(--accent);
+}
+
+.edm-auth-eye-slash {
+  position: absolute;
+  width: 22px;
+  height: 1.5px;
+  background: currentColor;
+  transform: rotate(-45deg);
+  box-shadow: 0 1px 0 var(--field-background);
+}

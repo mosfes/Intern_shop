@@ -5,74 +5,48 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
-import { scenePhotos } from "@/data/photos";
+import type { Promotion } from "@/lib/promotions";
+import "./promotion-art.css";
 
-const slides = [
-  {
-    tag: "มาใหม่",
-    eyebrow: "GeForce RTX 50 Series",
-    title: "RTX 5070 มาแล้ว\nเริ่มต้น ฿22,900",
-    description: "ASUS TUF Gaming RTX 5070 12GB รองรับ DLSS 4 เล่นเกม 1440p ได้สบาย ๆ",
-    cta: { href: "/products?category=gpu", label: "ช้อปการ์ดจอ" },
-    secondary: { href: "/products/asus-tuf-geforce-rtx-5070", label: "ดู RTX 5070" },
-    image: scenePhotos.heroGpu,
-  },
-  {
-    tag: "ขายดี",
-    eyebrow: "AMD Ryzen 9000X3D",
-    title: "Ryzen 7 9800X3D\nเหลือ ฿17,990",
-    description: "ลดจาก ฿19,500 ถึงสิ้นสัปดาห์นี้ ซีพียูสายเล่นเกมที่ได้เฟรมเรตสูงสุดตอนนี้ ด้วย 3D V-Cache",
-    cta: { href: "/products/amd-ryzen-7-9800x3d", label: "ซื้อเลย" },
-    secondary: { href: "/products?category=cpu", label: "ซีพียูทั้งหมด" },
-    image: scenePhotos.heroCpu,
-  },
-  {
-    tag: "สายครีเอเตอร์",
-    eyebrow: "จอ OLED 240Hz",
-    title: "จอ OLED 27 นิ้ว 240Hz\nราคา ฿26,900",
-    description: "LG UltraGear OLED สีดำสนิท ตอบสนอง 0.03ms ใช้ได้ทั้งเล่นเกมและแต่งภาพ",
-    cta: { href: "/products?category=monitor", label: "ช้อปจอมอนิเตอร์" },
-    secondary: { href: "/products/lg-ultragear-27-oled-240hz", label: "LG UltraGear OLED" },
-    image: scenePhotos.heroMonitor,
-  },
-];
-
-export function HeroSlider() {
+export function HeroSlider({ slides }: { slides: Promotion[] }) {
   const [index, setIndex] = useState(0);
+  const count = slides.length;
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (paused) return;
-    const id = window.setInterval(() => setIndex((i) => (i + 1) % slides.length), 6500);
+    if (paused || count < 2) return;
+    const id = window.setInterval(() => setIndex((i) => (i + 1) % count), 6500);
     return () => window.clearInterval(id);
-  }, [paused]);
+  }, [paused, count]);
 
-  const go = (d: number) => setIndex((i) => (i + d + slides.length) % slides.length);
+  if (!count) return null;
+  const current = index % count;
+  const go = (d: number) => setIndex((i) => (i + d + count) % count);
 
   return (
     <section
       aria-roledescription="carousel"
       aria-label="โปรโมชันแนะนำ"
-      className="relative overflow-hidden rounded-xl border border-border bg-surface"
+      className="edm-promo-hero relative overflow-hidden rounded-xl border border-border"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
     >
-      <div className="relative min-h-[620px] sm:min-h-[460px]">
+      <div className="relative grid sm:min-h-[490px]">
         {slides.map((s, i) => (
           <div
-            key={s.title}
+            key={s.id}
             role="group"
             aria-roledescription="slide"
-            aria-label={`${i + 1} จาก ${slides.length}`}
-            aria-hidden={i !== index}
-            inert={i !== index}
-            className={`absolute inset-0 flex items-end bg-surface px-6 pb-16 pt-8 text-foreground transition-opacity duration-700 sm:items-center sm:px-10 sm:pb-8 lg:px-14 ${
-              i === index ? "opacity-100" : "pointer-events-none opacity-0"
+            aria-label={`${i + 1} จาก ${count}`}
+            aria-hidden={i !== current}
+            inert={i !== current}
+            className={`edm-promo-slide relative col-start-1 row-start-1 flex flex-col justify-center px-5 pb-12 pt-6 transition-opacity duration-700 sm:px-10 sm:pb-16 sm:pt-8 lg:px-12 ${
+              i === current ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           >
-            <div className="absolute inset-x-5 top-5 h-[240px] sm:inset-y-6 sm:left-auto sm:right-6 sm:h-auto sm:w-[43%]">
+            <div className="edm-promo-productStage">
               <Image
               src={s.image}
               alt=""
@@ -80,44 +54,47 @@ export function HeroSlider() {
               loading={i === 0 ? "eager" : undefined}
               fetchPriority={i === 0 ? "high" : undefined}
               sizes="(min-width: 1024px) 900px, 100vw"
-              className={`object-contain p-6 transition-transform duration-[6000ms] ease-out ${i === index ? "scale-105" : "scale-100"}`}
+              className="object-contain p-0 sm:p-3"
               />
             </div>
-            <div className="relative z-10 max-w-lg sm:max-w-[51%]">
-              <p className="mb-4 flex items-center gap-2.5 text-sm text-muted">
-                <span className="rounded-md bg-accent/10 px-2 py-0.5 text-[13px] font-medium text-accent">{s.tag}</span>
-                {s.eyebrow}
-              </p>
-              <h1 className="whitespace-pre-line text-3xl font-semibold leading-tight tracking-tight sm:text-4xl lg:text-[2.6rem]">
+            <div className="edm-promo-campaign relative z-10 w-full sm:max-w-[56%]">
+              {s.tag && <span className="edm-promo-campaignTag">{s.tag}</span>}
+              <span className="edm-promo-fromShop">จาก <strong>EDM<span>.</span></strong> PC Shop</span>
+            </div>
+            <div className="relative z-10 w-[54%] sm:w-full sm:max-w-[56%]">
+              {s.eyebrow && <p className="mb-1.5 text-[11px] font-medium tracking-wide edm-promo-eyebrow sm:mb-2 sm:text-sm">{s.eyebrow}</p>}
+              <h1 className="edm-promo-productTitle">
                 {s.title}
+                {s.highlight && <span className="edm-promo-price">{s.highlight}</span>}
               </h1>
-              <p className="mt-4 text-sm text-muted sm:text-base">{s.description}</p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link href={s.cta.href} className={buttonVariants({ size: "lg" })}>
-                  {s.cta.label}
-                  <ArrowRightIcon size={18} />
-                </Link>
-                <Link
-                  href={s.secondary.href}
-                  className={buttonVariants({ size: "lg", variant: "secondary" })}
-                >
-                  {s.secondary.label}
-                </Link>
-              </div>
+              <p className="mt-2 line-clamp-3 max-w-md text-xs leading-relaxed edm-promo-description sm:mt-3 sm:line-clamp-none sm:text-sm">{s.description}</p>
+            </div>
+            <div className="relative z-10 mt-5 flex w-full gap-2 sm:mt-6 sm:max-w-[56%] sm:flex-wrap sm:gap-3">
+              <Link href={s.ctaHref} className={`${buttonVariants({ size: "lg" })} edm-promo-primaryCta`}>
+                {s.ctaLabel || "ดูสินค้า"}
+                <ArrowRightIcon size={18} />
+              </Link>
+              {s.secondaryHref && s.secondaryLabel && <Link
+                href={s.secondaryHref}
+                className={`${buttonVariants({ size: "lg", variant: "secondary" })} edm-promo-secondaryCta`}
+              >
+                {s.secondaryLabel}
+              </Link>}
             </div>
           </div>
         ))}
       </div>
 
+      {count > 1 && <>
       <div className="absolute bottom-5 left-6 z-20 flex items-center gap-2 sm:left-10 lg:left-14">
         {slides.map((s, i) => (
           <button
-            key={s.title}
+            key={s.id}
             type="button"
             aria-label={`ไปสไลด์ที่ ${i + 1}`}
-            aria-current={i === index}
+            aria-current={i === current}
             onClick={() => setIndex(i)}
-            className={`h-1.5 rounded-full transition-all duration-300 ${i === index ? "w-8 bg-foreground" : "w-3 bg-foreground/25 hover:bg-foreground/50"}`}
+            className={`edm-promo-dot h-1.5 rounded-full transition-all duration-300 ${i === current ? "w-8" : "w-3"}`}
           />
         ))}
       </div>
@@ -129,6 +106,7 @@ export function HeroSlider() {
           <ChevronRightIcon size={18} />
         </Button>
       </div>
+      </>}
     </section>
   );
 }

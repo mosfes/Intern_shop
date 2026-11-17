@@ -1,3 +1,4 @@
+import { matchesSpecs, type SpecSelection } from "./spec-filters";
 import type { Category, CategorySlug, Product } from "./types";
 
 function haystack(p: Product, category: Category | undefined) {
@@ -52,6 +53,8 @@ export interface CatalogFilters {
   price: [number, number];
   inStockOnly: boolean;
   onSaleOnly: boolean;
+  /** Category sub-filters (socket, DDR, wattage …) keyed by facet key — see spec-filters.ts. */
+  specs: SpecSelection;
 }
 
 export function filterProducts(list: Product[], f: CatalogFilters) {
@@ -62,6 +65,7 @@ export function filterProducts(list: Product[], f: CatalogFilters) {
       p.price >= f.price[0] &&
       p.price <= f.price[1] &&
       (!f.inStockOnly || p.stock > 0) &&
-      (!f.onSaleOnly || p.discount > 0),
+      (!f.onSaleOnly || p.discount > 0) &&
+      matchesSpecs(p, f.specs),
   );
 }

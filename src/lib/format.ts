@@ -1,5 +1,5 @@
 export function formatBaht(value: number) {
-  return `฿${Math.round(value).toLocaleString("en-US")}`;
+  return `฿${value.toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(value) ? 0 : 2, maximumFractionDigits: 2 })}`;
 }
 
 const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];

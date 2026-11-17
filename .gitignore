@@ -47,3 +47,4 @@ next-env.d.ts
 # local tooling and generated exports/screenshots
 /.claude/
 /output/
+/.playwright-cli/

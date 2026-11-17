@@ -30,3 +30,35 @@ const catalogOnlyLogos: BrandLogo[] = [{ brand: "LG", src: "/brands/lg.svg", rat
 export const brandLogoMap: Record<string, BrandLogo> = Object.fromEntries(
   [...brandLogos, ...catalogOnlyLogos].map((b) => [b.brand, b]),
 );
+
+/**
+ * Brand colours used by the catalogue brand picker: `light` on the light theme, `dark` (a lighter tint) on the dark theme.
+ * Single-colour SVGs are drawn as a mask in this colour; brands without a bundled SVG use it for their text wordmark.
+ */
+export const brandColors: Record<string, { light: string; dark: string }> = {
+  ASUS: { light: "#00539B", dark: "#4DA3FF" },
+  MSI: { light: "#E60012", dark: "#FF3B3B" },
+  AMD: { light: "#ED1C24", dark: "#FF4B50" },
+  Intel: { light: "#0068B5", dark: "#3FA0F0" },
+  Corsair: { light: "#111111", dark: "#FFD100" },
+  NZXT: { light: "#111111", dark: "#E5E7EB" },
+  Samsung: { light: "#1428A0", dark: "#5B7CFF" },
+  Kingston: { light: "#E31837", dark: "#FF4D64" },
+  Razer: { light: "#00B800", dark: "#44D62C" },
+  Logitech: { light: "#00B8FC", dark: "#00B8FC" },
+  SteelSeries: { light: "#FF5200", dark: "#FF6A2B" },
+  LG: { light: "#A50034", dark: "#FF4D7E" },
+  "G.SKILL": { light: "#E31E24", dark: "#FF4B4B" },
+  GIGABYTE: { light: "#0066B3", dark: "#3D9BFF" },
+  Sapphire: { light: "#0F4C9C", dark: "#4C8DFF" },
+  Seasonic: { light: "#E60012", dark: "#FF4B4B" },
+  Noctua: { light: "#8C6A3F", dark: "#C9A26B" },
+  "Lian Li": { light: "#D31F26", dark: "#FF5C5C" },
+  "Fractal Design": { light: "#222222", dark: "#E5E7EB" },
+  Crucial: { light: "#0073CF", dark: "#3BA0FF" },
+  ARCTIC: { light: "#00A0E3", dark: "#2BC0F5" },
+  Lexar: { light: "#D8232A", dark: "#FF4B50" },
+};
+
+/** Logos that already carry their own colours: drawn as a normal image instead of a mask. */
+export const nativeColorLogos = new Set(["Western Digital"]);

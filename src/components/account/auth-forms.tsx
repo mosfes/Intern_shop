@@ -2,104 +2,156 @@
 
 import {
   Button,
-  Card,
   Checkbox,
   Description,
   FieldError,
   Form,
   Input,
   Label,
-  Separator,
   TextField,
+  buttonVariants,
   toast,
 } from "@heroui/react";
+import { useFeedback } from "@/components/feedback-provider";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
-import { CheckIcon, Logo } from "@/components/icons";
-import { scenePhotos } from "@/data/photos";
+import { useEffect, useState, type ReactNode } from "react";
+import { EyeIcon, GoogleIcon } from "@/components/icons";
+import { rememberPostLoginPath } from "@/lib/auth-redirect";
 import { storeActions } from "@/lib/store";
+import "./auth-showcase.css";
+
+function ShopShowcase() {
+  return (
+    <aside aria-label="อุปกรณ์คอมพิวเตอร์จาก EDM PC Shop" className="edm-auth-showcase">
+      <Image
+        src="/images/promotions/auth-clean-shadow-lossless.webp"
+        alt="ภาพประกอบคอมเกมมิ่งเคสกระจก ประกอบด้วยการ์ดจอ MSI ชุดน้ำ NZXT แรม Kingston และเมนบอร์ด ASUS พร้อมกล่อง AMD Ryzen 7, MSI RTX 5070 Ti และ ROG ในโทนส้มและขาว"
+        fill
+        unoptimized
+        loading="eager"
+        sizes="(min-width: 1152px) 552px, (min-width: 1024px) 50vw, 100vw"
+        className="edm-auth-artwork"
+      />
+    </aside>
+  );
+}
 
 function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: ReactNode; footer: ReactNode }) {
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:py-16">
-      <div className="relative hidden overflow-hidden rounded-xl bg-neutral-950 p-10 text-white lg:flex lg:flex-col">
-        <Image src={scenePhotos.setup} alt="" fill sizes="(min-width: 1024px) 480px, 1px" className="bg-white object-contain p-10" />
-        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/70 to-neutral-950/30" />
-        <Logo className="relative !text-white" />
-        <h2 className="relative mt-auto text-3xl font-semibold leading-tight">เข้าสู่ระบบเพื่อติดตาม<br />คำสั่งซื้อและรายการโปรด</h2>
-        <ul className="relative mt-6 space-y-3 text-sm text-white/80">
-          {["ติดตามคำสั่งซื้อได้ทุกขั้นตอน", "บันทึกรายการโปรดข้ามอุปกรณ์", "รับโค้ดส่วนลดสมาชิกก่อนใคร"].map((t) => (
-            <li key={t} className="flex items-center gap-2">
-              <CheckIcon size={16} className="text-orange-400" /> {t}
-            </li>
-          ))}
-        </ul>
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
+      <div className="grid overflow-hidden rounded-xl border border-border bg-surface lg:grid-cols-2">
+        <section className="px-6 py-8 sm:px-12 sm:py-12 lg:px-14">
+          <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight">{title}</h1>
+          <p className="mt-2 text-sm text-muted">{subtitle}</p>
+          <div className="mt-8">{children}</div>
+          <p className="mt-8 text-sm text-muted">{footer}</p>
+        </section>
+        <ShopShowcase />
       </div>
-      <Card className="border border-border p-6 sm:p-10">
-        <Card.Header className="mb-6 p-0">
-          <Card.Title className="text-2xl font-semibold tracking-tight">{title}</Card.Title>
-          <Card.Description>{subtitle}</Card.Description>
-        </Card.Header>
-        <Card.Content className="p-0">{children}</Card.Content>
-        <Card.Footer className="mt-6 justify-center p-0 text-sm text-muted">{footer}</Card.Footer>
-      </Card>
     </div>
   );
 }
 
-const demoNote = (
-  <p className="rounded-xl bg-warning-soft px-3 py-2 text-xs text-warning-soft-foreground">
-    โหมดสาธิต: ไม่มีเซิร์ฟเวอร์ยืนยันตัวตน ข้อมูลจะถูกเก็บไว้ในเบราว์เซอร์ของคุณเท่านั้น และไม่ตรวจสอบรหัสผ่าน
-  </p>
-);
+function GoogleButton({ label }: { label: string }) {
+  return (
+    <a href="/api/auth/google" className={`${buttonVariants({ variant: "outline", size: "lg" })} w-full gap-3 font-medium`}>
+      <GoogleIcon size={18} />
+      {label}
+    </a>
+  );
+}
 
-export function LoginForm() {
+function OrDivider({ children }: { children: ReactNode }) {
+  return (
+    <div className="my-6 flex items-center gap-4 text-xs text-muted" role="separator">
+      <span className="h-px flex-1 bg-border" />
+      {children}
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+export function LoginForm({ googleError, next }: { googleError?: string; next?: string }) {
   const router = useRouter();
+  // Google sign-in leaves the site, so keep the destination in this tab for /auth/complete.
+  useEffect(() => rememberPostLoginPath(next ?? null), [next]);
   const [pending, setPending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
+  const [loginError, setLoginError] = useState("");
   return (
     <AuthShell
       title="เข้าสู่ระบบ"
       subtitle="ยินดีต้อนรับกลับสู่ EDM PC Shop"
       footer={
-        <span>
+        <>
           ยังไม่มีบัญชี?{" "}
           <Link href="/register" className="font-medium text-accent hover:underline">
             สมัครสมาชิก
           </Link>
-        </span>
+        </>
       }
     >
+      {next && !googleError && (
+        <p role="status" className="mb-4 rounded-lg bg-accent-soft/60 px-3 py-2 text-sm">
+          กรุณาเข้าสู่ระบบก่อนสั่งซื้อ สินค้าในตะกร้าของคุณจะยังอยู่ครบ
+        </p>
+      )}
+      {googleError && (
+        <p role="alert" className="mb-4 text-sm text-danger">
+          {googleError === "google_configuration"
+            ? "ยังไม่พร้อมให้เข้าสู่ระบบด้วย Google กรุณาลองใหม่ภายหลัง"
+            : "เข้าสู่ระบบด้วย Google ไม่สำเร็จ กรุณาลองอีกครั้ง"}
+        </p>
+      )}
+      <GoogleButton label="เข้าสู่ระบบด้วย Google" />
+      <p className="mt-3 text-center text-xs text-muted">ใช้บัญชี Google เข้าสู่ระบบได้ทันที โดยไม่ต้องสมัครสมาชิก</p>
+      <OrDivider>แอดมินเข้าสู่ระบบด้วยชื่อผู้ใช้</OrDivider>
+      {loginError && <p role="alert" className="mb-4 text-sm text-danger">{loginError}</p>}
       <Form
         className="flex flex-col gap-4"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          const email = String(new FormData(e.currentTarget).get("email"));
-          setPending(true);
-          window.setTimeout(() => {
-            const name = email.split("@")[0];
-            storeActions.signIn({ name: name.charAt(0).toUpperCase() + name.slice(1), email });
-            toast.success("เข้าสู่ระบบสำเร็จ (เดโม)");
-            router.push("/profile");
-          }, 500);
+          const form = new FormData(e.currentTarget);
+          setPending(true); setLoginError("");
+          try {
+            const response = await fetch("/api/auth/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: String(form.get("identifier")).trim(), password: form.get("password"), remember: form.has("remember") }) });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error);
+            router.replace(result.mustChangePassword ? "/change-password" : "/auth/complete");
+          } catch (error) { setLoginError(error instanceof Error ? error.message : "เข้าสู่ระบบไม่สำเร็จ"); }
+          finally { setPending(false); }
         }}
       >
-        {demoNote}
-        <TextField name="email" type="email" isRequired autoComplete="email">
-          <Label>อีเมล</Label>
-          <Input placeholder="you@email.com" />
-          <FieldError>กรุณากรอกอีเมลให้ถูกต้อง</FieldError>
+        <TextField name="identifier" type="text" isRequired autoComplete="username" validate={(value) => value.trim() ? null : "กรุณากรอกชื่อผู้ใช้"}>
+          <Label>ชื่อผู้ใช้แอดมิน</Label>
+          <Input placeholder="ชื่อผู้ใช้แอดมิน" />
+          <FieldError>กรุณากรอกชื่อผู้ใช้</FieldError>
         </TextField>
-        <TextField name="password" type="password" isRequired minLength={6} autoComplete="current-password">
+        <TextField name="password" type={showPassword ? "text" : "password"} isRequired maxLength={128} autoComplete="current-password">
           <div className="flex items-center justify-between">
             <Label>รหัสผ่าน</Label>
-            <button type="button" className="text-xs text-accent hover:underline" onClick={() => toast("ฟีเจอร์ลืมรหัสผ่านเป็นตัวอย่าง UI เท่านั้น")}>
+            <button type="button" className="text-xs text-accent hover:underline" onClick={() => toast("ให้แอดมินตั้งรหัสผ่านใหม่ที่หน้าจัดการแอดมิน หรือเข้าสู่ระบบด้วย Google")}>
               ลืมรหัสผ่าน?
             </button>
           </div>
-          <Input placeholder="อย่างน้อย 6 ตัวอักษร" />
-          <FieldError>รหัสผ่านอย่างน้อย 6 ตัวอักษร</FieldError>
+          <div className="edm-auth-password">
+            <Input
+              placeholder="รหัสผ่านแอดมิน"
+              onKeyDown={(event) => setCapsLock(event.getModifierState("CapsLock"))}
+              onKeyUp={(event) => setCapsLock(event.getModifierState("CapsLock"))}
+              onBlur={() => setCapsLock(false)}
+              aria-describedby={capsLock ? "login-caps-lock" : undefined}
+            />
+            <button type="button" className="edm-auth-password-toggle" aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"} aria-pressed={showPassword} onClick={() => setShowPassword((visible) => !visible)}>
+              <EyeIcon size={18} />
+              {showPassword && <span className="edm-auth-eye-slash" />}
+            </button>
+          </div>
+          {capsLock && <Description id="login-caps-lock" className="text-accent" role="status">เปิด Caps Lock อยู่</Description>}
+          <FieldError>กรุณากรอกรหัสผ่าน</FieldError>
         </TextField>
         <Checkbox name="remember" defaultSelected>
           <Checkbox.Content>
@@ -110,22 +162,7 @@ export function LoginForm() {
           </Checkbox.Content>
         </Checkbox>
         <Button type="submit" size="lg" fullWidth isPending={pending}>
-          เข้าสู่ระบบ
-        </Button>
-        <div className="flex items-center gap-3 text-xs text-muted">
-          <Separator className="flex-1" /> หรือ <Separator className="flex-1" />
-        </div>
-        <Button
-          variant="secondary"
-          size="lg"
-          fullWidth
-          onPress={() => {
-            storeActions.signIn({ name: "ผู้ใช้ทดลอง", email: "guest@edmpcshop.example" });
-            toast.success("เข้าสู่ระบบด้วยบัญชีทดลองแล้ว");
-            router.push("/profile");
-          }}
-        >
-          ทดลองใช้งานด้วยบัญชีตัวอย่าง
+          {pending ? "กำลังเข้าสู่ระบบ…" : "เข้าสู่ระบบ"}
         </Button>
       </Form>
     </AuthShell>
@@ -133,6 +170,7 @@ export function LoginForm() {
 }
 
 export function RegisterForm() {
+  const showFeedback = useFeedback();
   const router = useRouter();
   const [password, setPassword] = useState("");
   return (
@@ -140,12 +178,12 @@ export function RegisterForm() {
       title="สมัครสมาชิก"
       subtitle="สร้างบัญชีเพื่อรับสิทธิพิเศษสำหรับสมาชิก"
       footer={
-        <span>
+        <>
           มีบัญชีอยู่แล้ว?{" "}
           <Link href="/login" className="font-medium text-accent hover:underline">
             เข้าสู่ระบบ
           </Link>
-        </span>
+        </>
       }
     >
       <Form
@@ -154,11 +192,10 @@ export function RegisterForm() {
           e.preventDefault();
           const d = new FormData(e.currentTarget);
           storeActions.signIn({ name: String(d.get("name")), email: String(d.get("email")), phone: String(d.get("phone") ?? "") });
-          toast.success("สมัครสมาชิกสำเร็จ (เดโม)", { description: "ยินดีต้อนรับสู่ EDM PC Shop" });
+          showFeedback({ title: "สมัครสมาชิกสำเร็จ (เดโม)", description: "ยินดีต้อนรับสู่ EDM PC Shop จัดการข้อมูลของคุณได้ที่หน้าโปรไฟล์" });
           router.push("/profile");
         }}
       >
-        {demoNote}
         <TextField name="name" isRequired autoComplete="name">
           <Label>ชื่อ-นามสกุล</Label>
           <Input placeholder="สมชาย ใจดี" />

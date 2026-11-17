@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Kanit } from "next/font/google";
+import { SiteChrome } from "@/components/layout/site-chrome";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Providers, themeInitScript } from "@/components/providers";
@@ -40,11 +41,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           >
             ข้ามไปยังเนื้อหา
           </a>
-          <SiteHeader />
-          <main id="main" className="flex-1">
+          <SiteChrome header={<SiteHeader />} footer={<SiteFooter />}>
             {children}
-          </main>
-          <SiteFooter />
+          </SiteChrome>
         </Providers>
       </body>
     </html>

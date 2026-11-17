@@ -1,12 +1,25 @@
 /** Category slug — categories come from the API, so any string is possible. */
 export type CategorySlug = string;
 
+/** A default specification row a category pre-fills in the product form. */
+export interface CategorySpecField {
+  label: string;
+  /** Placeholder shown to the admin, e.g. "AM5 หรือ LGA1700". */
+  example: string;
+  /** Read by the PC builder compatibility check — keep the label unchanged. */
+  compatibility?: boolean;
+  /** Read by the PC builder power advice — keep the label unchanged. */
+  powerAdvice?: boolean;
+}
+
 export interface Category {
   slug: CategorySlug;
   name: string;
   nameTh: string;
   description: string;
   image: string;
+  /** Admin-only: default spec rows for new products. Not sent to the storefront. */
+  specFields?: CategorySpecField[];
 }
 
 export interface Specification {
@@ -28,6 +41,7 @@ export type ProductTag = "best-seller" | "new" | "recommended" | "flash-sale" | 
 
 export interface Product {
   id: string;
+  source?: "mockapi" | "tidb";
   slug: string;
   name: string;
   brand: string;
@@ -52,6 +66,8 @@ export interface Product {
 export interface CartLine {
   productId: string;
   quantity: number;
+  /** Ticked in the cart = included in checkout. Missing means ticked. */
+  selected?: boolean;
 }
 
 export interface OrderLine {
@@ -78,6 +94,9 @@ export interface Order {
 }
 
 export interface DemoUser {
+  role?: "admin" | "customer";
+  googleId?: string;
+  picture?: string | null;
   name: string;
   email: string;
   phone?: string;

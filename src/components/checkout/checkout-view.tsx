@@ -15,13 +15,17 @@ import {
 } from "@heroui/react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
+import { CHECKOUT_LOGIN_HREF } from "@/lib/auth-redirect";
 import { CartSkeleton } from "@/components/cart/cart-view";
 import { OrderSummary } from "@/components/cart/order-summary";
+import { ShippingAddressFields } from "@/components/checkout/shipping-address-fields";
 import { BankIcon, CartIcon, CashIcon, CheckIcon, CreditCardIcon, QrIcon, ShieldIcon } from "@/components/icons";
 import { useCatalog } from "@/components/catalog-provider";
 import { formatBaht, shippingCost, shippingOptions, type ShippingId } from "@/lib/format";
-import { cartDetails, storeActions, useCartLines, useHydrated, useStore } from "@/lib/store";
+import { AdminOrderNotice } from "@/components/account/admin-order-notice";
+import { cartDetails, storeActions, useCartLines, useHydrated, useIsAdmin, useStore } from "@/lib/store";
 import type { Order } from "@/lib/types";
 
 const paymentMethods = [
@@ -51,15 +55,35 @@ export function CheckoutView() {
   const hydrated = useHydrated();
   const lines = useCartLines();
   const user = useStore((s) => s.user);
+  const isAdmin = useIsAdmin();
   const { productMap } = useCatalog();
-  const { items, subtotal, savings } = cartDetails(lines, productMap);
+  const { selectedItems: items, subtotal, savings } = cartDetails(lines, productMap);
   const [shipping, setShipping] = useState<ShippingId>("standard");
   const [payment, setPayment] = useState<PaymentId>("card");
   const [submitting, setSubmitting] = useState(false);
   const [placed, setPlaced] = useState<Order | null>(null);
+  const router = useRouter();
+  const mustSignIn = hydrated && !user && !placed;
+
+  // Signed-out visitors may fill a cart but can't order: send them to log in, then back here.
+  useEffect(() => {
+    if (mustSignIn) router.replace(CHECKOUT_LOGIN_HREF);
+  }, [mustSignIn, router]);
 
   if (!hydrated) return <CartSkeleton />;
+  if (isAdmin) return <AdminOrderNotice />;
   if (placed) return <Confirmation order={placed} />;
+  if (!user) {
+    return (
+      <div role="status" className="rounded-xl border border-dashed border-border bg-surface px-6 py-16 text-center">
+        <h2 className="text-xl font-semibold">กรุณาเข้าสู่ระบบก่อนสั่งซื้อ</h2>
+        <p className="mt-1 text-sm text-muted">กำลังพาไปหน้าเข้าสู่ระบบ สินค้าในตะกร้าของคุณจะยังอยู่ครบ</p>
+        <Link href={CHECKOUT_LOGIN_HREF} className={`${buttonVariants()} mt-6`}>
+          เข้าสู่ระบบ
+        </Link>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -68,10 +92,15 @@ export function CheckoutView() {
           <CartIcon size={30} />
         </span>
         <h2 className="text-xl font-semibold">ไม่มีสินค้าสำหรับชำระเงิน</h2>
-        <p className="mt-1 text-sm text-muted">เพิ่มสินค้าลงตะกร้าก่อนดำเนินการชำระเงิน</p>
-        <Link href="/products" className={`${buttonVariants()} mt-6`}>
-          เลือกซื้อสินค้า
-        </Link>
+        <p className="mt-1 text-sm text-muted">เลือกสินค้าในตะกร้าที่ต้องการสั่งซื้อก่อนดำเนินการชำระเงิน</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link href="/cart" className={buttonVariants()}>
+            กลับไปที่ตะกร้า
+          </Link>
+          <Link href="/products" className={buttonVariants({ variant: "secondary" })}>
+            เลือกซื้อสินค้า
+          </Link>
+        </div>
       </div>
     );
   }
@@ -105,7 +134,11 @@ export function CheckoutView() {
             paymentMethod: paymentMethods.find((p) => p.id === payment)!.label,
             address: `${data.fullName} · ${data.address} ${data.district} ${data.province} ${data.postcode}`,
           };
-          storeActions.placeOrder(order);
+          if (!storeActions.placeOrder(order)) {
+            setSubmitting(false);
+            router.replace(CHECKOUT_LOGIN_HREF);
+            return;
+          }
           setPlaced(order);
           setSubmitting(false);
           window.scrollTo({ top: 0 });
@@ -136,21 +169,7 @@ export function CheckoutView() {
               <TextArea placeholder="บ้านเลขที่ อาคาร ถนน" rows={2} />
               <FieldError>กรุณากรอกที่อยู่</FieldError>
             </TextField>
-            <TextField name="district" isRequired>
-              <Label>เขต / อำเภอ</Label>
-              <Input />
-              <FieldError>จำเป็นต้องกรอก</FieldError>
-            </TextField>
-            <TextField name="province" isRequired defaultValue="กรุงเทพมหานคร">
-              <Label>จังหวัด</Label>
-              <Input />
-              <FieldError>จำเป็นต้องกรอก</FieldError>
-            </TextField>
-            <TextField name="postcode" isRequired inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code">
-              <Label>รหัสไปรษณีย์</Label>
-              <Input placeholder="10330" maxLength={5} />
-              <FieldError>รหัสไปรษณีย์ 5 หลัก</FieldError>
-            </TextField>
+            <ShippingAddressFields />
           </div>
         </Step>
 

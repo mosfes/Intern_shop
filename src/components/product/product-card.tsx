@@ -27,7 +27,7 @@ export function ProductCard({ product, layout = "grid", priority }: ProductCardP
       {/* Image */}
       <div className={`relative shrink-0 bg-art ${isList ? "w-36 sm:w-56" : "aspect-square w-full"}`}>
         <Link href={href} aria-label={product.name} className="absolute inset-0">
-          <ProductImage src={product.images[0]} alt={product.name} priority={priority} className="group-hover:scale-105" />
+          <ProductImage src={product.images[0]} alt={product.name} priority={priority} className="motion-safe:group-hover:scale-105 motion-safe:group-focus-within:scale-105" />
         </Link>
         <div className="pointer-events-none absolute left-3 top-3 flex flex-col items-start gap-1.5">
           <DiscountChip discount={product.discount} />
@@ -67,7 +67,6 @@ export function ProductCard({ product, layout = "grid", priority }: ProductCardP
           >
             {product.name}
           </Link>
-          <p className="truncate text-xs text-muted">{product.shortSpecs.join(" · ")}</p>
           {isList && <p className="mt-1 line-clamp-2 hidden text-sm text-muted sm:block">{product.description}</p>}
           <Rating value={product.rating} count={product.reviewCount} size={12} />
           <div className="mt-auto pt-2">

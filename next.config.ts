@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
       ? [new URL(`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL.replace(/\/$/, "")}/**`)]
       : [],
   },
+  // Brand logos uploaded in the admin live in R2 at brands/<slug>. They are drawn with CSS mask-image,
+  // which needs CORS for cross-origin files — proxying through this origin avoids configuring the bucket.
+  async rewrites() {
+    const base = process.env.NEXT_PUBLIC_IMAGE_BASE_URL?.replace(/\/$/, "");
+    return base ? [{ source: "/brand-logos/:slug", destination: `${base}/brands/:slug` }] : [];
+  },
   turbopack: {
     rules: {
       "*.css": {

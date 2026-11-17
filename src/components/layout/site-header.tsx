@@ -13,12 +13,14 @@ import {
   Separator,
   Tooltip,
   buttonVariants,
+  toast,
   useTheme,
 } from "@heroui/react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import {
   BoltIcon,
   CartIcon,
@@ -31,6 +33,7 @@ import {
   MoonIcon,
   PackageIcon,
   SearchIcon,
+  ShieldIcon,
   SunIcon,
   UserIcon,
 } from "@/components/icons";
@@ -38,35 +41,38 @@ import { useCatalog } from "@/components/catalog-provider";
 import { scenePhotos } from "@/data/photos";
 import { formatBaht } from "@/lib/format";
 import { searchProducts } from "@/lib/search";
+import type { DemoUser } from "@/lib/types";
 import { storeActions, useCartCount, useStore } from "@/lib/store";
 
 const iconLink = buttonVariants({ variant: "ghost", isIconOnly: true });
 
-export function SiteHeader() {
+export function SiteHeader({ variant = "store", onOpenMenu, adminUser }: { variant?: "store" | "admin"; onOpenMenu?: () => void; adminUser?: DemoUser }) {
+  const isAdmin = variant === "admin";
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
-      <div className="hidden bg-foreground text-background sm:block">
+      {!isAdmin && <div className="hidden bg-foreground text-background sm:block">
         <p className="mx-auto max-w-7xl px-4 py-1.5 text-center text-xs sm:px-6">
           ส่งฟรีเมื่อช้อปครบ ฿3,000
         </p>
-      </div>
+      </div>}
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4 sm:px-6">
-        <MobileNav />
+        {isAdmin ? <Button isIconOnly variant="ghost" aria-label="เปิดเมนูแอดมิน" className="lg:hidden" onPress={onOpenMenu}><MenuIcon /></Button> : <MobileNav />}
         <Link href="/" aria-label="EDM PC Shop หน้าแรก" className="shrink-0">
-          <Logo />
+          <Logo className="h-8 w-auto sm:h-12" />
         </Link>
-        <div className="hidden flex-1 justify-center md:flex">
+        {isAdmin && <span className="hidden shrink-0 border-l border-border pl-4 text-sm font-medium text-muted lg:block">ระบบจัดการร้าน</span>}
+        {!isAdmin && <div className="hidden flex-1 justify-center md:flex">
           <HeaderSearch />
-        </div>
-        <div className="ml-auto flex items-center gap-0.5 sm:gap-1 md:ml-0">
-          <MobileSearch />
+        </div>}
+        <div className={`ml-auto flex items-center gap-0.5 sm:gap-1 ${isAdmin ? "" : "md:ml-0"}`}>
+          {!isAdmin && <MobileSearch />}
           <ThemeToggle />
-          <WishlistLink />
-          <CartLink />
-          <UserMenu />
+          {!isAdmin && <WishlistLink />}
+          {!isAdmin && <CartLink />}
+          <UserMenu fallbackUser={adminUser} />
         </div>
       </div>
-      <CategoryBar />
+      {!isAdmin && <CategoryBar />}
     </header>
   );
 }
@@ -200,9 +206,37 @@ function ThemeToggle() {
   const hydrated = useSyncExternalStore(subscribeToHydration, getHydratedSnapshot, getServerHydratedSnapshot);
   const isDark = hydrated && resolvedTheme === "dark";
   const label = isDark ? "เปลี่ยนเป็นโหมดสว่าง" : "เปลี่ยนเป็นโหมดมืด";
+
+  // Circular reveal from the button via the View Transitions API (falls back to an instant swap).
+  const toggle = (target: Element) => {
+    const next = isDark ? "light" : "dark";
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!document.startViewTransition || reduceMotion) {
+      setTheme(next);
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+    const root = document.documentElement;
+    root.style.setProperty("--theme-x", `${x}px`);
+    root.style.setProperty("--theme-y", `${y}px`);
+    root.style.setProperty("--theme-r", `${radius}px`);
+    const transition = document.startViewTransition(() => {
+      // HeroUI writes the theme class in a layout effect — flush so the new state is captured.
+      flushSync(() => setTheme(next));
+    });
+    transition.finished.finally(() => {
+      root.style.removeProperty("--theme-x");
+      root.style.removeProperty("--theme-y");
+      root.style.removeProperty("--theme-r");
+    });
+  };
+
   return (
     <Tooltip delay={400}>
-      <Button isIconOnly variant="ghost" aria-label={label} isDisabled={!hydrated} onPress={() => setTheme(isDark ? "light" : "dark")}>
+      <Button isIconOnly variant="ghost" aria-label={label} isDisabled={!hydrated} onPress={(e) => toggle(e.target as Element)}>
         <span>{isDark ? <SunIcon /> : <MoonIcon />}</span>
       </Button>
       <Tooltip.Content>{label}</Tooltip.Content>
@@ -243,8 +277,9 @@ function CartLink() {
   );
 }
 
-function UserMenu() {
-  const user = useStore((s) => s.user);
+function UserMenu({ fallbackUser }: { fallbackUser?: DemoUser }) {
+  const storeUser = useStore((s) => s.user);
+  const user = fallbackUser ?? storeUser;
   const router = useRouter();
   if (!user) {
     return (
@@ -254,10 +289,13 @@ function UserMenu() {
       </Link>
     );
   }
+  // Admins manage security (2FA) from their profile; customers only see plain "โปรไฟล์".
+  const profileLabel = user.role === "admin" ? "โปรไฟล์ / ความปลอดภัย" : "โปรไฟล์";
   return (
     <Dropdown>
-      <Dropdown.Trigger aria-label="เมนูบัญชีผู้ใช้" className="ml-1 rounded-full">
-        <Avatar size="sm" color="accent" variant="soft">
+      <Dropdown.Trigger aria-label="เมนูบัญชีผู้ใช้" className="ml-1 inline-flex size-8 shrink-0 rounded-full">
+        <Avatar size="sm" color="accent" variant="soft" className="size-8 rounded-full">
+          {user.picture && <Avatar.Image src={user.picture} alt="" referrerPolicy="no-referrer" className="size-full rounded-full object-cover" />}
           <Avatar.Fallback>{user.name.slice(0, 1).toUpperCase()}</Avatar.Fallback>
         </Avatar>
       </Dropdown.Trigger>
@@ -269,25 +307,30 @@ function UserMenu() {
         <Separator />
         <Dropdown.Menu
           aria-label="บัญชีผู้ใช้"
-          onAction={(key) => {
+          onAction={async (key) => {
             if (key === "logout") {
-              storeActions.signOut();
-              router.push("/");
+              try {
+                await storeActions.signOut();
+                router.push("/");
+              } catch {
+                toast.danger("ออกจากระบบไม่สำเร็จ กรุณาลองอีกครั้ง");
+              }
             } else router.push(`/${String(key)}`);
           }}
         >
-          <Dropdown.Item id="profile" textValue="โปรไฟล์ของฉัน">
+          {user.role === "admin" && <Dropdown.Item id="admin" textValue="แอดมิน"><ShieldIcon size={16} /><Label>แอดมิน</Label></Dropdown.Item>}
+          <Dropdown.Item id="profile" textValue={profileLabel}>
             <UserIcon size={16} />
-            <Label>โปรไฟล์ของฉัน</Label>
+            <Label>{profileLabel}</Label>
           </Dropdown.Item>
-          <Dropdown.Item id="orders" textValue="คำสั่งซื้อ">
+          {user.role !== "admin" && <Dropdown.Item id="orders" textValue="คำสั่งซื้อ">
             <PackageIcon size={16} />
             <Label>คำสั่งซื้อ</Label>
-          </Dropdown.Item>
-          <Dropdown.Item id="wishlist" textValue="รายการโปรด">
+          </Dropdown.Item>}
+          {user.role !== "admin" && <Dropdown.Item id="wishlist" textValue="รายการโปรด">
             <HeartIcon size={16} />
             <Label>รายการโปรด</Label>
-          </Dropdown.Item>
+          </Dropdown.Item>}
           <Dropdown.Item id="logout" textValue="ออกจากระบบ" variant="danger">
             <LogoutIcon size={16} />
             <Label>ออกจากระบบ</Label>
@@ -301,12 +344,13 @@ function UserMenu() {
 // ---------------------------------------------------------------- categories
 function CategoryBar() {
   const { categories } = useCatalog();
+  const isPcBuilder = usePathname() === "/pc-builder";
   return (
     <nav aria-label="หมวดหมู่สินค้า" className="hidden border-t border-border lg:block">
       <div className="mx-auto flex h-12 max-w-7xl items-center gap-1 px-6">
         <MegaMenu />
         <Separator orientation="vertical" className="mx-2 h-5" />
-        {categories.slice(0, 7).map((c) => (
+        {categories.slice(0, 6).map((c) => (
           <Link
             key={c.slug}
             href={`/products?category=${c.slug}`}
@@ -321,6 +365,14 @@ function CategoryBar() {
         >
           <BoltIcon size={16} />
           Flash Sale
+        </Link>
+        <Link
+          href="/pc-builder"
+          aria-current={isPcBuilder ? "page" : undefined}
+          className={`ml-2 inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${isPcBuilder ? "border-foreground/20 bg-surface-secondary text-foreground" : "border-border text-muted hover:bg-surface-secondary hover:text-foreground"}`}
+        >
+          <PackageIcon size={16} />
+          จัดสเปคคอม
         </Link>
       </div>
     </nav>
@@ -387,6 +439,7 @@ function MegaMenu() {
 // ---------------------------------------------------------------- mobile
 function MobileNav() {
   const { categories } = useCatalog();
+  const isPcBuilder = usePathname() === "/pc-builder";
   const [isOpen, setOpen] = useState(false);
   const user = useStore((s) => s.user);
   const close = () => setOpen(false);
@@ -402,13 +455,14 @@ function MobileNav() {
             <Drawer.CloseTrigger />
             <Drawer.Header>
               <Drawer.Heading>
-                <Logo />
+                <Logo className="h-8 w-auto" />
               </Drawer.Heading>
             </Drawer.Header>
             <Drawer.Body className="flex flex-col gap-1">
               {user ? (
                 <Link href="/profile" onClick={close} className={`${linkCls} mb-2 bg-surface-secondary`}>
-                  <Avatar size="sm" color="accent" variant="soft">
+                  <Avatar size="sm" color="accent" variant="soft" className="rounded-full">
+                    {user.picture && <Avatar.Image src={user.picture} alt="" referrerPolicy="no-referrer" className="size-full rounded-full object-cover" />}
                     <Avatar.Fallback>{user.name.slice(0, 1).toUpperCase()}</Avatar.Fallback>
                   </Avatar>
                   <span>
@@ -417,15 +471,16 @@ function MobileNav() {
                   </span>
                 </Link>
               ) : (
-                <div className="mb-2 grid grid-cols-2 gap-2">
-                  <Link href="/login" onClick={close} className={buttonVariants({ variant: "primary" })}>
-                    เข้าสู่ระบบ
-                  </Link>
-                  <Link href="/register" onClick={close} className={buttonVariants({ variant: "secondary" })}>
-                    สมัครสมาชิก
-                  </Link>
-                </div>
+                <Link href="/login" onClick={close} className={`${buttonVariants({ variant: "primary" })} mb-2 h-10 w-full shrink-0 rounded-xl text-sm font-medium`}>
+                  <UserIcon size={16} />
+                  เข้าสู่ระบบ
+                </Link>
               )}
+              <Link href="/pc-builder" onClick={close} aria-current={isPcBuilder ? "page" : undefined} className={`${linkCls} mb-2 border border-border font-medium ${isPcBuilder ? "bg-surface-secondary" : ""}`}>
+                <PackageIcon size={18} />
+                จัดสเปคคอม
+                <ChevronRightIcon size={16} className="ml-auto text-muted" />
+              </Link>
               <p className="px-3 pb-1 pt-2 text-xs font-medium text-muted">หมวดหมู่</p>
               {categories.map((c) => (
                 <Link key={c.slug} href={`/products?category=${c.slug}`} onClick={close} className={linkCls}>
@@ -438,8 +493,9 @@ function MobileNav() {
               ))}
               <Separator className="my-2" />
               <Link href="/products" onClick={close} className={linkCls}>สินค้าทั้งหมด</Link>
-              <Link href="/wishlist" onClick={close} className={linkCls}>รายการโปรด</Link>
-              <Link href="/orders" onClick={close} className={linkCls}>คำสั่งซื้อของฉัน</Link>
+              {user?.role !== "admin" && <Link href="/wishlist" onClick={close} className={linkCls}>รายการโปรด</Link>}
+              {user?.role === "admin" && <Link href="/admin" onClick={close} className={linkCls}>แอดมิน</Link>}
+              {user?.role !== "admin" && <Link href="/orders" onClick={close} className={linkCls}>คำสั่งซื้อของฉัน</Link>}
               <Link href="/cart" onClick={close} className={linkCls}>ตะกร้าสินค้า</Link>
             </Drawer.Body>
           </Drawer.Dialog>

@@ -81,13 +81,15 @@
 
 html {
   scroll-behavior: smooth;
+  /* Clip horizontal overflow on the viewport (<html>), not <body>: an overflow value on body makes it a
+     scroll container once a dropdown/popover locks <html> scrolling, which breaks the sticky header. */
+  overflow-x: hidden;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -131,6 +133,32 @@ body {
   animation-play-state: paused;
 }
 
+/* Theme switch: circular reveal of the new theme from the toggle button (position set by ThemeToggle) */
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0px at var(--theme-x, 50%) var(--theme-y, 0%));
+  }
+  to {
+    clip-path: circle(var(--theme-r, 150vmax) at var(--theme-x, 50%) var(--theme-y, 0%));
+  }
+}
+/* HeroUI sets `:root { view-transition-name: none }`, which would disable the page snapshot entirely */
+html:root {
+  view-transition-name: root;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 2;
+  animation: theme-reveal 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -155,4 +183,13 @@ body {
 /* Keep HeroUI cards in line with the rest of the site's corners (12px) */
 .card {
   border-radius: var(--radius-xl);
+}
+
+/* Match the pointer to clickable controls, including HeroUI's portalled menus. */
+:where(button, a[href], summary, select, [role="button"], [role="option"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="tab"], [role="checkbox"], [role="radio"], [role="switch"], input[type="button"], input[type="submit"], input[type="reset"], input[type="checkbox"], input[type="radio"], input[type="range"], label:has(input[type="checkbox"], input[type="radio"])) {
+  cursor: pointer;
+}
+
+:where(:disabled, [aria-disabled="true"], [data-disabled="true"], label:has(input:disabled)) {
+  cursor: not-allowed;
 }

@@ -38,7 +38,11 @@ function createAdapter() {
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
+// A regenerated schema can add models while next dev retains the old global client.
+const cached = globalForPrisma.prisma;
 export const prisma =
-  globalForPrisma.prisma ?? new PrismaClient({ adapter: createAdapter() });
+  cached?.adminCredential && cached.adminLoginLimit && cached.product && cached.brand && cached.category && cached.categorySpecField && cached.imageUpload && cached.promotion && cached.cartItem && !("adminEmail" in cached)
+    ? cached
+    : new PrismaClient({ adapter: createAdapter() });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
