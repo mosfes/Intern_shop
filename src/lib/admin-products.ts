@@ -4,6 +4,9 @@ import type { ProductInput } from "./product-management";
 import type { Prisma } from "@/generated/prisma/client";
 import { createDatabaseProduct, databaseProductInclude, fromDatabaseProduct, updateDatabaseProduct } from "./product-storage";
 import { storedCategories, toSpecFields } from "./catalog-metadata";
+import { checkStockEdit, lockStock, StockConflictError, stockTransaction } from "./stock-coordination";
+import { PaymentError } from "./payments";
+export { StockConflictError } from "./stock-coordination";
 
 export type SourcedProduct = Product & { source: "mockapi" | "tidb" };
 
@@ -20,17 +23,52 @@ export async function createTiDBProduct(input: ProductInput, category: Category,
   return createDatabaseProduct(input, category, undefined, tx);
 }
 
-export async function updateStoredProduct(existing: SourcedProduct, input: ProductInput, category: Category, tx?: Prisma.TransactionClient) {
-  const { id, source, ...data } = { ...existing, ...input };
-  if (source === "tidb") return updateDatabaseProduct(id, input, category, tx);
-  return { ...await catalogRequest<Product>(`products/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify({ id, ...data }) }), source: "mockapi" as const };
+export async function updateStoredProduct(existing: SourcedProduct, input: ProductInput, category: Category, client?: Prisma.TransactionClient, expectedStock?: number) {
+  const { id } = existing;
+  const write = async (tx: Prisma.TransactionClient) => {
+    await lockStock(tx, [id]);
+    const current = isTiDBProduct(id)
+      ? await tx.product.findUnique({ where: { id }, include: databaseProductInclude }).then((row) => row ? fromDatabaseProduct(row) : null)
+      : await getStoredProduct(id);
+    if (!current) throw new CatalogApiError(404);
+    if (!Number.isSafeInteger(expectedStock)) throw new PaymentError("ข้อมูลสต็อกเดิมไม่ถูกต้อง กรุณาโหลดรายการใหม่", 400);
+    if (current.stock !== expectedStock) throw new StockConflictError(current.stock);
+    await checkStockEdit(tx, id, input.stock);
+    if (isTiDBProduct(id)) return updateDatabaseProduct(id, input, category, tx);
+    // Partial update preserves the worker's receipt and unrelated remote fields.
+    return { ...await catalogRequest<Product>(`products/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(input) }), source: "mockapi" as const };
+  };
+  return client ? write(client) : stockTransaction(write);
 }
 
 export async function deleteStoredProduct(id: string) {
-  if (isTiDBProduct(id)) {
-    const result = await prisma.product.deleteMany({ where: { id } });
-    if (!result.count) throw new CatalogApiError(404);
-  } else await catalogRequest(`products/${encodeURIComponent(id)}`, { method: "DELETE" });
+  return stockTransaction(async (tx) => {
+    await lockStock(tx, [id]);
+    await checkStockEdit(tx, id);
+    if (isTiDBProduct(id)) {
+      const result = await tx.product.deleteMany({ where: { id } });
+      if (!result.count) throw new CatalogApiError(404);
+    } else await catalogRequest(`products/${encodeURIComponent(id)}`, { method: "DELETE" });
+  });
+}
+
+/** Change only stock, and reject an outdated count instead of overwriting a sale. */
+export async function updateStoredProductStock(id: string, stock: number, expectedStock: number) {
+  return stockTransaction(async (tx) => {
+    await lockStock(tx, [id]);
+    await checkStockEdit(tx, id, stock);
+    if (isTiDBProduct(id)) {
+      const result = await tx.product.updateMany({ where: { id, stock: expectedStock }, data: { stock } });
+      const current = await tx.product.findUnique({ where: { id }, select: { id: true, stock: true } });
+      if (!current) throw new CatalogApiError(404);
+      if (!result.count) throw new StockConflictError(current.stock);
+      return current;
+    }
+    const existing = await getStoredProduct(id);
+    if (existing.stock !== expectedStock) throw new StockConflictError(existing.stock);
+    const updated = await catalogRequest<Product>(`products/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify({ stock }) });
+    return { id, stock: updated.stock };
+  });
 }
 
 export class CatalogApiError extends Error {

@@ -78,7 +78,7 @@ export function ProductEditor({ product, categories, brands, pending, onSave, on
     setError("");
     const form = new FormData(event.currentTarget);
     const result = await onSave({
-      ...(product ? { id: product.id } : {}),
+      ...(product ? { id: product.id, expectedStock: product.stock } : {}),
       draftId,
       name: form.get("name"), slug, brand, category,
       price: Number(form.get("price")), originalPrice: Number(form.get("originalPrice")), stock: Number(form.get("stock")),

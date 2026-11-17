@@ -9,7 +9,7 @@ import { prisma } from "../src/lib/prisma";
 Object.defineProperty(prisma.adminActivityLog, "create", { configurable: true, value: async () => ({ id: "test-log" }) });
 Object.defineProperty(prisma.adminActivityLog, "update", { configurable: true, value: async () => ({}) });
 import { SESSION_COOKIE, signAuthToken } from "../src/lib/google-auth";
-import { GET, POST, PUT, DELETE } from "../src/app/api/admin/products/route";
+import { GET, POST, PUT, PATCH, DELETE } from "../src/app/api/admin/products/route";
 import { validateProductInput } from "../src/lib/product-management";
 import type { StoredProduct } from "../src/lib/product-storage";
 
@@ -31,6 +31,11 @@ const stub = (target: object, method: string, value: unknown) => Object.definePr
 stub(prisma.shopUser, "findUnique", async ({ where }: { where: { googleId: string } }) => ({ googleId: where.googleId, email: `${where.googleId}@example.com`, name: "Test", disabled: where.googleId === "disabled", phone: "", picture: null }));
 stub(prisma.adminCredential, "findUnique", async ({ where }: { where: { email: string } }) => where.email === "customer@example.com" ? null : { active: true, passwordHash: "hash", mustChangePassword: where.email === "reset@example.com", version: 1 });
 stub(prisma, "$transaction", async (run: (tx: typeof prisma) => Promise<unknown>) => run(prisma));
+stub(prisma, "$queryRaw", async () => []);
+stub(prisma, "$executeRaw", async () => 1);
+stub(prisma.stockLock, "createMany", async () => ({ count: 1 }));
+stub(prisma.stockReservation, "aggregate", async () => ({ _sum: { quantity: 0 } }));
+stub(prisma.stockMovement, "count", async () => 0);
 stub(prisma.brand, "upsert", async ({ where, create }: { where: { name: string }; create: { name: string } }) => {
   let row = databaseBrands.find((row) => row.name === where.name);
   if (!row) { row = { id: `brand-${databaseBrands.length + 1}`, ...create, logoUrl: null }; databaseBrands.push(row); }
@@ -66,6 +71,14 @@ stub(prisma.product, "update", async ({ where, data }: { where: { id: string }; 
   if (index === -1) throw { code: "P2025" };
   databaseRows[index] = materialize(data, databaseRows[index]); return databaseRows[index];
 });
+const stockWrites: Record<string, unknown>[] = [];
+stub(prisma.product, "updateMany", async ({ where, data }: { where: { id: string; stock: number }; data: { stock: number } }) => {
+  stockWrites.push(data);
+  const row = databaseRows.find((row) => row.id === where.id && row.stock === where.stock);
+  if (!row) return { count: 0 };
+  row.stock = data.stock;
+  return { count: 1 };
+});
 stub(prisma.product, "deleteMany", async ({ where }: { where: { id: string } }) => {
   const before = databaseRows.length;
   databaseRows = databaseRows.filter((row) => row.id !== where.id);
@@ -86,6 +99,8 @@ globalThis.fetch = async (url, init) => {
 };
 
 async function request(method = "GET", body?: unknown, identity?: string, origin = "http://localhost:3000") {
+  // Full-editor fixtures were loaded with five units in stock.
+  if (method === "PUT" && body && typeof body === "object" && !Array.isArray(body)) body = { expectedStock: 5, ...body };
   const headers: Record<string, string> = { origin, "Content-Type": "application/json" };
   if (identity) headers.cookie = `${SESSION_COOKIE}=${await signAuthToken({ sub: identity, email: `${identity}@example.com`, name: "Test", ...(identity === "reset" ? { authMethod: "password", credentialVersion: 1 } : {}) }, "session", 60)}`;
   return new NextRequest("http://localhost:3000/api/admin/products", { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -108,7 +123,8 @@ test("catalog access and all mutations enforce current admin membership and orig
   assert.equal((await GET(await request("GET", undefined, "customer"))).status, 403);
   assert.equal((await GET(await request("GET", undefined, "disabled"))).status, 401);
   assert.equal((await GET(await request("GET", undefined, "reset"))).status, 403);
-  for (const [method, handler] of [["POST", POST], ["PUT", PUT], ["DELETE", DELETE]] as const) {
+  for (const [method, handler] of [["POST", POST], ["PUT", PUT], ["PATCH", PATCH], ["DELETE", DELETE]] as const) {
+    assert.equal((await handler(await request(method, input))).status, 401);
     assert.equal((await handler(await request(method, input, "customer"))).status, 403);
     assert.equal((await handler(await request(method, input, "admin", "https://evil.test"))).status, 403);
   }
@@ -185,9 +201,76 @@ test("TiDB separates and reuses brands and categories and stores selected specs 
   assert.equal(calls.some((call) => call.method === "POST"), false);
 });
 
+test("quick stock edits validate counts and update only stock in both sources", async () => {
+  rows = [structuredClone(initial)]; databaseRows = []; invalidations.length = 0; stockWrites.length = 0;
+  for (const stock of [-1, 0.5, 1_000_001, "5", null]) {
+    assert.equal((await PATCH(await request("PATCH", { id: "1", stock, expectedStock: 5 }, "admin"))).status, 400);
+  }
+  assert.equal((await PATCH(await request("PATCH", { id: "../products", stock: 0, expectedStock: 5 }, "admin"))).status, 400);
+  assert.equal((await PATCH(await request("PATCH", { id: "1", stock: 0 }, "admin"))).status, 400);
+  assert.equal((await PATCH(await request("PATCH", [], "admin"))).status, 400);
+  const malformed = await request("PATCH", undefined, "admin");
+  assert.equal((await PATCH(malformed)).status, 400);
+  assert.equal(rows[0].stock, 5);
+  // Legacy catalogue records need no full-product resubmission or image validation.
+  rows[0].images = ["https://legacy.example.test/cpu.webp"];
+  const before = structuredClone(rows[0]);
+  const updated = await PATCH(await request("PATCH", { id: "1", stock: 0, expectedStock: 5, name: "forged", source: "tidb" }, "admin"));
+  assert.equal(updated.status, 200);
+  assert.deepEqual((await updated.json()).product, { id: "1", stock: 0 });
+  assert.deepEqual(rows[0], { ...before, stock: 0 });
+  const stale = await PATCH(await request("PATCH", { id: "1", stock: 10, expectedStock: 5 }, "admin"));
+  assert.equal(stale.status, 409);
+  assert.equal((await stale.json()).stock, 0);
+  assert.equal(rows[0].stock, 0);
+  assert.equal((await PATCH(await request("PATCH", { id: "missing", stock: 1, expectedStock: 0 }, "admin"))).status, 404);
+
+  const created = await POST(await request("POST", { ...input, slug: "quick-stock-cpu" }, "admin"));
+  const product = (await created.json()).product;
+  const dbBefore = structuredClone(databaseRows[0]);
+  calls = [];
+  const dbUpdated = await PATCH(await request("PATCH", { id: product.id, stock: 1_000_000, expectedStock: 5, source: "mockapi" }, "admin"));
+  assert.equal(dbUpdated.status, 200);
+  assert.equal((await dbUpdated.json()).product.stock, 1_000_000);
+  assert.deepEqual(databaseRows[0], { ...dbBefore, stock: 1_000_000 });
+  assert.deepEqual(stockWrites[0], { stock: 1_000_000 });
+  assert.deepEqual(calls, []);
+  // A checkout changed stock since the row loaded: do not overwrite it.
+  databaseRows[0].stock = 4;
+  const conflict = await PATCH(await request("PATCH", { id: product.id, stock: 10, expectedStock: 1_000_000 }, "admin"));
+  assert.equal(conflict.status, 409);
+  assert.equal((await conflict.json()).stock, 4);
+  assert.equal(databaseRows[0].stock, 4);
+  databaseRows[0].stock = -2;
+  assert.equal((await PATCH(await request("PATCH", { id: product.id, stock: 0, expectedStock: -2 }, "admin"))).status, 200);
+  assert.equal(databaseRows[0].stock, 0);
+  assert.equal((await PATCH(await request("PATCH", { id: "tidb_missing", stock: 1, expectedStock: 0 }, "admin"))).status, 404);
+  assert.equal(invalidations.length, 4);
+});
+
+test("full product forms reject stale stock for both sources", async () => {
+  rows = [structuredClone(initial)]; databaseRows = [];
+  rows[0].stock = 2;
+  const staleRemote = await PUT(await request("PUT", { ...input, id: "1", name: "Changed title", expectedStock: 5 }, "admin"));
+  assert.equal(staleRemote.status, 409);
+  assert.equal(rows[0].stock, 2);
+  assert.equal(rows[0].name, initial.name);
+  const created = await POST(await request("POST", { ...input, slug: "stale-form-cpu" }, "admin"));
+  const product = (await created.json()).product;
+  databaseRows[0].stock = 4;
+  const staleDatabase = await PUT(await request("PUT", { ...input, id: product.id, slug: product.slug, name: "Changed title", expectedStock: 5 }, "admin"));
+  assert.equal(staleDatabase.status, 409);
+  assert.equal(databaseRows[0].stock, 4);
+  assert.equal(databaseRows[0].name, input.name);
+  assert.equal((await PUT(await request("PUT", { ...input, id: "1", expectedStock: null }, "admin"))).status, 400);
+});
+
 test("upstream failures are reported without leaking internal details", async () => {
   globalThis.fetch = async () => { throw new Error("secret upstream config"); };
   const response = await GET(await request("GET", undefined, "admin"));
   assert.equal(response.status, 503);
   assert.ok(!JSON.stringify(await response.json()).includes("secret"));
+  const patch = await PATCH(await request("PATCH", { id: "1", stock: 1, expectedStock: 0 }, "admin"));
+  assert.equal(patch.status, 503);
+  assert.ok(!JSON.stringify(await patch.json()).includes("secret"));
 });

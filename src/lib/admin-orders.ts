@@ -61,6 +61,7 @@ export function customerOrder(order: Order): Order {
   const visible = { ...order };
   delete visible.adminNote;
   delete visible.stockTaken;
+  delete visible.stockIssue;
   return visible;
 }
 

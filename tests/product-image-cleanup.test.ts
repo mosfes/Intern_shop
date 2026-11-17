@@ -56,6 +56,7 @@ stub(prisma.imageUpload, "upsert", async ({ where, create }: { where: { key: str
 stub(prisma.imageUpload, "update", async ({ where, data }: { where: { key: string }; data: Record<string, unknown> }) => { const row = rows.get(where.key)!; change(row, data); return row; });
 stub(prisma.imageUpload, "updateMany", async ({ where, data }: { where: Where; data: Record<string, unknown> }) => { const found = [...rows.values()].filter((row) => matches(row, where)); for (const row of found) change(row, data); return { count: found.length }; });
 stub(prisma.productImage, "findMany", async () => [...databaseReferences].map((url) => ({ url })));
+stub(prisma.promotion, "findMany", async () => []);
 stub(prisma.brand, "findMany", async () => [...brandReferences].map((logoUrl) => ({ logoUrl })));
 stub(prisma.category, "findMany", async () => [...categoryReferences].map((image) => ({ image })));
 stub(prisma.shopUser, "findUnique", async ({ where }: { where: { googleId: string } }) => ({ googleId: where.googleId, email: `${where.googleId}@example.com`, name: "Test", disabled: false, phone: "", picture: null }));

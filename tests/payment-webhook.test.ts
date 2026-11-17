@@ -45,6 +45,11 @@ function fakeDatabase() {
   };
   const writes = { ledger: 0, coupons: 0, carts: 0 };
   const tx = {
+    $queryRaw: async () => [],
+    $executeRaw: async () => 1,
+    stockLock: { createMany: async () => ({ count: 1 }) },
+    stockMovement: { findFirst: async () => null },
+    stockReservation: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     checkoutPayment: {
       findFirst: async () => row,
       updateMany: async ({ where, data }: { where: { status: string | { not: string } }; data: { status: string; chargeId: string } }) => {

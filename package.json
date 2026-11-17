@@ -32,7 +32,9 @@
     "r2:upload": "tsx scripts/upload-images-to-r2.ts",
     "mockapi:export": "tsx scripts/export-mockapi-json.ts",
     "mockapi:push": "tsx scripts/push-to-mockapi.ts",
-    "db:setup-order-emails": "node --import tsx scripts/setup-order-emails.ts"
+    "db:setup-order-emails": "node --import tsx scripts/setup-order-emails.ts",
+    "db:setup-stock": "node --import tsx scripts/setup-stock.ts",
+    "stock:retry": "node --import tsx scripts/retry-stock.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1169.0",

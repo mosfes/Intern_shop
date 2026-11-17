@@ -112,6 +112,8 @@ export interface Order {
    * them must not put back stock that was never taken. Removed before the order is sent to the customer.
    */
   stockTaken?: boolean;
+  /** Internal: a paid legacy checkout is awaiting stock allocation; fulfilment must wait. */
+  stockIssue?: string;
 }
 
 export interface DemoUser {

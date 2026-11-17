@@ -11,6 +11,7 @@ export const PRODUCT_TAGS: { value: ProductTag; label: string }[] = [
 export type ProductInput = Omit<Product, "id" | "rating" | "reviewCount" | "reviews">;
 
 export class ProductInputError extends Error {}
+export const MAX_PRODUCT_STOCK = 1_000_000;
 
 export function validateProductInput(value: unknown, categories: Category[]): ProductInput {
   const fail = (message: string): never => { throw new ProductInputError(message); };
@@ -50,7 +51,7 @@ export function validateProductInput(value: unknown, categories: Category[]): Pr
   return {
     name: string("name", 255, true), brand: string("brand", 100, true), slug, category,
     price, originalPrice, discount: originalPrice > 0 ? Math.round((1 - price / originalPrice) * 100) : 0,
-    stock: number("stock", 1_000_000, true), images, tags: tags as ProductTag[],
+    stock: number("stock", MAX_PRODUCT_STOCK, true), images, tags: tags as ProductTag[],
     description: string("description", 20000), warranty: string("warranty", 255),
     highlights: lines("highlights", 30, 1000), shortSpecs: lines("shortSpecs", 20, 1000),
     specifications: (specifications as Specification[]).map(({ label, value }) => ({ label: label.trim(), value: value.trim() })),

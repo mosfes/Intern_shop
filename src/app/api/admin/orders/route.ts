@@ -8,6 +8,7 @@ import type { Order } from "@/lib/types";
 import { randomUUID } from "node:crypto";
 import { enqueueOrderEmail, sendOrderEmail } from "@/lib/order-email";
 import { adjustDatabaseStock, finishStockAdjustment, type StockLine } from "@/lib/stock";
+import { stockTransaction } from "@/lib/stock-coordination";
 
 const PAGE_SIZE = 20;
 // Only paid orders are fulfilled. Unpaid ones (a charge was created and is still waiting) are listed on their
@@ -113,6 +114,7 @@ async function handlePATCH(request: NextRequest) {
     }
     const order = applyOrderUpdate(payment.order as unknown as Order, update);
     const previous = payment.order as unknown as Order;
+    if (previous.stockIssue && ["shipped", "delivered"].includes(order.status)) return adminJson({ error: "คำสั่งซื้อนี้ยังจัดสรรสินค้าไม่ครบ กรุณาตรวจสอบสต็อกก่อนจัดส่ง" }, 409);
     const statusChanged = (previous.status || "processing") !== order.status;
     const trackingChanged = (previous.trackingNumber || "") !== (order.trackingNumber || "");
     const emailId = (statusChanged || trackingChanged) && process.env.RESEND_API_KEY && process.env.RESEND_FROM ? `update/${randomUUID()}` : undefined;
@@ -120,21 +122,22 @@ async function handlePATCH(request: NextRequest) {
     // change. Orders paid before stock was tracked have nothing to put back.
     const returnStock = order.status === "cancelled" && statusChanged && previous.stockTaken === true;
     if (returnStock) order.stockTaken = false;
+    if (order.status === "cancelled") delete order.stockIssue;
     const save = (tx: Prisma.TransactionClient) => tx.checkoutPayment.updateMany({
       where: { id: payment.id, status: "successful", updatedAt: payment.updatedAt },
       data: { order: JSON.parse(JSON.stringify(order)) },
     });
     const pending: { external?: StockLine[] } = {};
-    const saved = emailId || returnStock ? await prisma.$transaction(async (tx) => {
+    const saved = emailId || returnStock ? await stockTransaction(async (tx) => {
       const result = await save(tx);
       if (result.count) {
         if (emailId) await enqueueOrderEmail(tx, emailId, payment.userId, order, statusChanged ? "status" : "tracking", payment.chargeId);
-        if (returnStock) pending.external = await adjustDatabaseStock(tx, previous.lines, "return");
+        if (returnStock) pending.external = await adjustDatabaseStock(tx, previous.lines, "return", payment.id);
       }
       return result;
     }) : await save(prisma);
     if (!saved.count) return adminJson({ error: "คำสั่งซื้อนี้ถูกแก้ไขไปแล้ว กรุณาโหลดข้อมูลใหม่" }, 409);
-    if (pending.external) await finishStockAdjustment(pending.external, "return");
+    if (pending.external) await finishStockAdjustment(pending.external);
     if (emailId) await sendOrderEmail(emailId).catch(() => false);
     const row = await prisma.checkoutPayment.findUnique({ where: { id: payment.id }, select: { updatedAt: true } });
     return adminJson({ order, updatedAt: row?.updatedAt.toISOString() ?? null });

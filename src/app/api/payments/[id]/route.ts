@@ -3,6 +3,7 @@ import { customerFromRequest } from "@/lib/customer-session";
 import { settleCharge } from "@/lib/payment-settlement";
 import { failureReason, getCharge, OmiseError, omiseConfigured } from "@/lib/omise";
 import { prisma } from "@/lib/prisma";
+import { customerOrder } from "@/lib/admin-orders";
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 type Context = { params: Promise<{ id: string }> };
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest, { params }: Context) {
         const inserted = await tx.paymentCharge.createMany({ data: [{ chargeId: charge.id, userId: user.googleId, amount: charge.amount, discountCode }], skipDuplicates: true });
         if (inserted.count && discountCode) await tx.discountCode.updateMany({ where: { code: discountCode }, data: { usedCount: { increment: 1 } } });
       });
-      return json({ status: "successful", total, discountCode, order });
+      return json({ status: "successful", total, discountCode, order: order ? customerOrder(order) : null });
     }
     if (charge.status === "pending") {
       return json({ status: "pending", total, authorizeUri: charge.authorize_uri, expiresAt: charge.expires_at, qrUrl: charge.source?.scannable_code?.image?.download_uri ?? null });

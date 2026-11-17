@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { AddressError, formatAddressLine, validateAddress, validateContact } from "@/lib/addresses";
 import { shippingOptions } from "@/lib/format";
-import { prisma } from "@/lib/prisma";
 import { settleCharge } from "@/lib/payment-settlement";
 import { orderIdForCharge } from "@/lib/pending-payment";
 import type { Order } from "@/lib/types";
@@ -12,8 +11,10 @@ import { customerFromRequest } from "@/lib/customer-session";
 import { DiscountCodeError, normalizeCode } from "@/lib/discount-codes";
 import { findDiscountCode } from "@/lib/discount-codes-server";
 import { authConfig } from "@/lib/google-auth";
-import { createCharge, failureReason, OmiseError, omiseConfigured } from "@/lib/omise";
+import { failureReason, OmiseError, omiseConfigured } from "@/lib/omise";
 import { isPaymentMethod, paymentLabel, PaymentError, priceOrder, toSatang } from "@/lib/payments";
+import { startCheckoutPayment } from "@/lib/checkout-payment";
+import { customerOrder } from "@/lib/admin-orders";
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 const QR_LIFETIME_MS = 30 * 60 * 1000;
@@ -58,13 +59,7 @@ export async function POST(request: NextRequest) {
       paymentMethod: paymentLabel(method),
       address: address ? `${contact.fullName} · ${formatAddressLine(address)} · ${contact.phone}` : `${contact.fullName} · ${contact.phone}`,
     };
-    // Persist before the bank can take payment. The webhook can locate this snapshot
-    // through metadata even if it arrives before this HTTP request finishes.
-    await prisma.checkoutPayment.create({ data: {
-      id: checkoutId, userId: user.googleId, amount: toSatang(price.total), order: JSON.parse(JSON.stringify(order)),
-    } });
-
-    const charge = await createCharge({
+    const charge = await startCheckoutPayment(user.googleId, order, {
       amount: String(toSatang(price.total)),
       currency: "THB",
       description: `EDM PC Shop · ${paymentLabel(method)}`,
@@ -79,7 +74,7 @@ export async function POST(request: NextRequest) {
     const failed = charge.status === "failed" || charge.status === "expired";
     if (failed) return json({ error: failureReason(charge) }, 402);
     // A card that already succeeded can still carry an authorize_uri; only a pending charge needs the customer to go there.
-    return json({ chargeId: charge.id, status: charge.status, authorizeUri: charge.status === "pending" ? charge.authorize_uri : null, total: price.total, discount: price.discount, shipping: price.shipping, order: settledOrder ?? { ...order, id: orderIdForCharge(charge.id) } }, 201);
+    return json({ chargeId: charge.id, status: charge.status, authorizeUri: charge.status === "pending" ? charge.authorize_uri : null, total: price.total, discount: price.discount, shipping: price.shipping, order: customerOrder(settledOrder ?? { ...order, id: orderIdForCharge(charge.id) }) }, 201);
   } catch (error) {
     if (error instanceof AddressError) return json({ error: "กรุณาตรวจสอบข้อมูลผู้รับและที่อยู่จัดส่ง" }, 400);
     if (error instanceof PaymentError || error instanceof DiscountCodeError || error instanceof OmiseError) return json({ error: error.message }, error.status);

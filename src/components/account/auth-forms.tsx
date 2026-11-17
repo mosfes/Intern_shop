@@ -112,7 +112,7 @@ export function LoginForm({ googleError, next, registered }: { googleError?: str
       )}
       <GoogleButton label="เข้าสู่ระบบด้วย Google" />
       <p className="mt-3 text-center text-xs text-muted">ลูกค้าเข้าสู่ระบบด้วยอีเมล Google ได้ทันที โดยไม่ต้องสมัครสมาชิก</p>
-      <OrDivider>เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้</OrDivider>
+      <OrDivider>เข้าสู่ระบบด้วยอีเมล</OrDivider>
       {loginError && <p role="alert" className="mb-4 text-sm text-danger">{loginError}</p>}
       <Form
         className="flex flex-col gap-4"
@@ -129,10 +129,10 @@ export function LoginForm({ googleError, next, registered }: { googleError?: str
           finally { setPending(false); }
         }}
       >
-        <TextField name="identifier" type="text" isRequired autoComplete="username" validate={(value) => value.trim() ? null : "กรุณากรอกอีเมลหรือชื่อผู้ใช้"}>
-          <Label>อีเมลลูกค้าหรือชื่อผู้ใช้แอดมิน</Label>
-          <Input placeholder="อีเมลลูกค้าหรือชื่อผู้ใช้แอดมิน" />
-          <FieldError>กรุณากรอกอีเมลหรือชื่อผู้ใช้</FieldError>
+        <TextField name="identifier" type="text" isRequired autoComplete="username" validate={(value) => value.trim() ? null : "กรุณากรอกอีเมล"}>
+          <Label>อีเมล</Label>
+          <Input placeholder="อีเมล" />
+          <FieldError>กรุณากรอกอีเมล</FieldError>
         </TextField>
         <TextField name="password" type={showPassword ? "text" : "password"} isRequired maxLength={128} autoComplete="current-password">
           <div className="flex items-center justify-between">

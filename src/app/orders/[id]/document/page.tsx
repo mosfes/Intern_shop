@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
@@ -124,7 +125,10 @@ async function PurchaseOrder({ params }: { params: Promise<{ id: string }> }) {
             {order.lines.map((line, index) => (
               <tr key={`${line.productId}-${index}`} className="break-inside-avoid border-b border-neutral-200 align-top">
                 <td className="py-2.5 pr-2 tabular-nums">{index + 1}</td>
-                <td className="py-2.5 pr-2"><p>{line.name}</p><p className="break-all text-xs text-neutral-500">รหัสสินค้า {line.productId}</p></td>
+                <td className="py-2.5 pr-2"><div className="flex items-start gap-3">
+                  {line.image && <Image src={line.image} alt="" width={56} height={56} unoptimized className="h-14 w-14 shrink-0 object-contain" />}
+                  <div className="min-w-0"><p>{line.name}</p><p className="break-all text-xs text-neutral-500">รหัสสินค้า {line.productId}</p></div>
+                </div></td>
                 <td className="py-2.5 pr-2 text-right tabular-nums">{line.quantity.toLocaleString("en-US")}</td>
                 <td className="py-2.5 pr-2 text-right tabular-nums">{formatBaht(line.price)}</td>
                 <td className="py-2.5 text-right tabular-nums">{formatBaht(line.price * line.quantity)}</td>
