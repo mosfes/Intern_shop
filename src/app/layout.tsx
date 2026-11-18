@@ -15,8 +15,14 @@ const kanit = Kanit({
   display: "swap",
 });
 
+const siteUrl = process.env.AUTH_URL
+  || (process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
+  || (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`)
+  || process.env.EMAIL_SITE_URL
+  || "http://localhost:3000";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.EMAIL_SITE_URL || "https://edmpcshop-intern.mosapps.dev"),
+  metadataBase: new URL(siteUrl),
   title: { default: "EDM PC Shop | ร้านอุปกรณ์คอมพิวเตอร์", template: "%s | EDM PC Shop" },
   description: "ช้อป CPU การ์ดจอ แรม SSD เมนบอร์ด จอมอนิเตอร์ และเกมมิ่งเกียร์ ของแท้ (เว็บไซต์สาธิต)",
   openGraph: {
