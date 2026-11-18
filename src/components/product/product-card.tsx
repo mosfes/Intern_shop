@@ -2,6 +2,7 @@
 
 import { Button, Card, Chip, Tooltip } from "@heroui/react";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { EyeIcon } from "@/components/icons";
 import { usePricedProduct } from "@/components/product/use-priced-product";
 import type { Product } from "@/lib/types";
@@ -12,9 +13,11 @@ interface ProductCardProps {
   product: Product;
   layout?: "grid" | "list";
   priority?: boolean;
+  /** Position in its list; staggers the entrance animation (see .product-card in globals.css). */
+  index?: number;
 }
 
-export function ProductCard({ product: rawProduct, layout = "grid", priority }: ProductCardProps) {
+export function ProductCard({ product: rawProduct, layout = "grid", priority, index = 0 }: ProductCardProps) {
   const product = usePricedProduct(rawProduct);
   const quickView = useQuickView();
   const href = `/products/${product.slug}`;
@@ -22,7 +25,8 @@ export function ProductCard({ product: rawProduct, layout = "grid", priority }: 
 
   return (
     <Card
-      className={`group relative h-full gap-0 overflow-hidden border border-border p-0 transition-all duration-300 ${
+      style={{ "--i": index } as CSSProperties}
+      className={`product-card group relative h-full gap-0 overflow-hidden border border-border p-0 ${
         isList ? "flex-row" : ""
       }`}
     >
@@ -92,7 +96,7 @@ export function ProductGrid({ products, priorityCount = 0 }: { products: Product
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-4">
       {products.map((p, i) => (
-        <ProductCard key={p.id} product={p} priority={i < priorityCount} />
+        <ProductCard key={p.id} product={p} priority={i < priorityCount} index={i} />
       ))}
     </div>
   );

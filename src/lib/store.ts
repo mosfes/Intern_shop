@@ -218,15 +218,14 @@ export const storeActions = {
   addBuildToCart(products: Product[]) {
     load();
     if (state.user?.role === "admin") return false;
-    const inCart = (p: Product) => state.cart.find((line) => line.productId === p.id)?.quantity ?? 0;
-    if (!products.length || products.some((p) => Math.min(p.stock, MAX_LINE_QUANTITY) <= inCart(p))) return false;
+    const inCart = (p: Product) => state.cart.some((line) => line.productId === p.id);
+    if (!products.length || products.some((p) => p.stock <= 0)) return false;
     if (state.cart.length + products.filter((p) => !inCart(p)).length > MAX_CART_LINES) return false;
     setState((s) => {
       const cart = s.cart.map((line) => ({ ...line }));
       for (const product of products) {
         const line = cart.find((item) => item.productId === product.id);
         if (line) {
-          line.quantity += 1;
           line.selected = true;
         }
         else cart.push({ productId: product.id, quantity: 1 });

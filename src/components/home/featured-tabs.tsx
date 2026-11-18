@@ -21,7 +21,7 @@ export function FeaturedTabs({ tabs }: { tabs: FeaturedTab[] }) {
         </Tabs.List>
       </Tabs.ListContainer>
       {tabs.map((t) => (
-        <Tabs.Panel key={t.id} id={t.id} className="animate-fade-up">
+        <Tabs.Panel key={t.id} id={t.id}>
           <ProductGrid products={t.products} />
         </Tabs.Panel>
       ))}

@@ -63,8 +63,8 @@ export function FlashSale({ products, settings }: { products: Product[]; setting
         <button type="button" aria-label="สินค้าแฟลชเซลก่อนหน้า" aria-controls="flash-sale-products" disabled={edges.start} onClick={() => slide(-1)} className="rounded-full border border-border p-2 hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-30"><ChevronDownIcon size={18} className="rotate-90" /></button>
         <button type="button" aria-label="สินค้าแฟลชเซลถัดไป" aria-controls="flash-sale-products" disabled={edges.end} onClick={() => slide(1)} className="rounded-full border border-border p-2 hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-30"><ChevronDownIcon size={18} className="-rotate-90" /></button>
       </div></div>
-      <div id="flash-sale-products" ref={track} onScroll={updateEdges} tabIndex={0} role="region" aria-label="สินค้าแฟลชเซล เลื่อนซ้ายขวาเพื่อดูเพิ่มเติม" className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-2 no-scrollbar focus-visible:outline-2 focus-visible:outline-accent sm:mx-0 sm:gap-5 sm:px-0">
-        {products.map((product) => <div key={product.id} className="w-[72%] shrink-0 snap-start min-[420px]:w-[46%] sm:w-[calc((100%-40px)/3)] xl:w-[calc((100%-60px)/4)]"><ProductCard product={product} /></div>)}
+      <div id="flash-sale-products" ref={track} onScroll={updateEdges} tabIndex={0} role="region" aria-label="สินค้าแฟลชเซล เลื่อนซ้ายขวาเพื่อดูเพิ่มเติม" className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-2 pt-1 no-scrollbar focus-visible:outline-2 focus-visible:outline-accent sm:mx-0 sm:gap-5 sm:px-0">
+        {products.map((product, i) => <div key={product.id} className="w-[72%] shrink-0 snap-start min-[420px]:w-[46%] sm:w-[calc((100%-40px)/3)] xl:w-[calc((100%-60px)/4)]"><ProductCard product={product} index={i} /></div>)}
       </div>
     </section>
   </Container>;

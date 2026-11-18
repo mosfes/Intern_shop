@@ -54,12 +54,27 @@ test("an ATX-only case does not accept an E-ATX board", () => {
   assert.equal(checkBuild({ motherboard: change(board, "Form Factor", "E-ATX"), case: change(pcCase, "Motherboard Support", "ATX, Micro-ATX") })[0].status, "error");
 });
 
-test("batch cart insertion is atomic when an existing quantity reaches stock", () => {
-  storeActions.clearCart();
-  assert.equal(storeActions.addBuildToCart([{ ...amd, stock: 1 }, board]), true);
-  assert.equal(storeActions.addBuildToCart([{ ...amd, stock: 1 }, board]), false);
-  assert.equal(storeActions.addBuildToCart([{ ...board, stock: 2 }]), true);
-  assert.equal(storeActions.addBuildToCart([{ ...board, stock: 2 }]), false);
-  assert.equal(storeActions.addBuildToCart([]), false);
-  storeActions.clearCart();
+test("adding a build twice keeps existing quantities and adds only missing parts", () => {
+  const previousWindow = globalThis.window;
+  let saved = "";
+  globalThis.window = { localStorage: {
+    getItem: () => null,
+    setItem: (_key: string, value: string) => { saved = value; },
+  } } as unknown as Window & typeof globalThis;
+  try {
+    storeActions.clearCart();
+    assert.equal(storeActions.addToCart(board, 2), true);
+    assert.equal(storeActions.addBuildToCart([{ ...amd, stock: 1 }, board]), true);
+    assert.equal(storeActions.addBuildToCart([{ ...amd, stock: 1 }, board]), true);
+    const cart = (JSON.parse(saved) as { cart: { productId: string; quantity: number }[] }).cart;
+    assert.deepEqual(cart.map(({ productId, quantity }) => ({ productId, quantity })), [
+      { productId: board.id, quantity: 2 },
+      { productId: amd.id, quantity: 1 },
+    ]);
+    assert.equal(storeActions.addBuildToCart([]), false);
+    assert.equal(storeActions.addBuildToCart([{ ...gpu, stock: 0 }]), false);
+  } finally {
+    storeActions.clearCart();
+    globalThis.window = previousWindow;
+  }
 });

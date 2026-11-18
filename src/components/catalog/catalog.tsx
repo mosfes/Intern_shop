@@ -324,13 +324,13 @@ export function Catalog({ mode, state, result }: CatalogProps) {
           ) : view === "grid" ? (
             <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 2xl:grid-cols-4">
               {visible.map((p, i) => (
-                <ProductCard key={p.id} product={p} priority={i < 3} />
+                <ProductCard key={p.id} product={p} priority={i < 3} index={i} />
               ))}
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {visible.map((p) => (
-                <ProductCard key={p.id} product={p} layout="list" />
+              {visible.map((p, i) => (
+                <ProductCard key={p.id} product={p} layout="list" index={i} />
               ))}
             </div>
           )}

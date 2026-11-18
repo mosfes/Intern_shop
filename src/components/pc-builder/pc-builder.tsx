@@ -1,11 +1,12 @@
 "use client";
 
-import { Button, Label, ListBox, Select, Separator, buttonVariants } from "@heroui/react";
+import { Button, Label, ListBox, Select, Separator } from "@heroui/react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useCatalog } from "@/components/catalog-provider";
-import { CartIcon, ChevronRightIcon, CloseIcon, SearchIcon } from "@/components/icons";
+import { CartIcon, CloseIcon, SearchIcon } from "@/components/icons";
 import { buildSlots, checkBuild, powerSupplyAdvice, type BuildParts, type BuildSlot } from "@/lib/pc-builder";
 import { formatBaht } from "@/lib/format";
 import { ADMIN_ORDER_BLOCKED_MESSAGE, storeActions, useHydrated, useIsAdmin, useStore } from "@/lib/store";
@@ -18,6 +19,7 @@ const sortOptions = [
 ];
 
 export function PcBuilder() {
+  const router = useRouter();
   const { products, productMap } = useCatalog();
   const build = useStore((s) => s.pcBuild);
   const hydrated = useHydrated();
@@ -28,7 +30,6 @@ export function PcBuilder() {
   const [sort, setSort] = useState("price-asc");
   const [budget, setBudget] = useState("50000");
   const [message, setMessage] = useState("");
-  const [added, setAdded] = useState(false);
   const parts: BuildParts = {};
   for (const slot of buildSlots) {
     const product = productMap.get(build[slot.key] ?? "");
@@ -64,7 +65,6 @@ export function PcBuilder() {
   function choose(id: string) {
     storeActions.savePcBuild({ ...build, [active]: id });
     setMessage("");
-    setAdded(false);
     const next = buildSlots.find((s) => s.key !== active && !parts[s.key]);
     if (next) open(next.key);
   }
@@ -73,12 +73,10 @@ export function PcBuilder() {
     const next = { ...build };
     delete next[key];
     storeActions.savePcBuild(next);
-    setAdded(false);
   }
 
   function reset() {
     storeActions.savePcBuild({});
-    setAdded(false);
     setMessage("");
     open("cpu");
   }
@@ -86,13 +84,12 @@ export function PcBuilder() {
   function addToCart() {
     if (!canCheckout) return;
     if (isAdmin) {
-      setAdded(false);
       setMessage(ADMIN_ORDER_BLOCKED_MESSAGE);
       return;
     }
     const ok = storeActions.addBuildToCart(selected);
-    setAdded(ok);
-    setMessage(ok ?"เพิ่มอุปกรณ์ทั้งชุดลงตะกร้าแล้ว" : "เพิ่มไม่ได้: สินค้าบางชิ้นในตะกร้ารวมกับชุดนี้เกินสต็อก หรือเกินลิมิตตะกร้า (สูงสุด 200 รายการ ไม่เกิน 50 ชิ้นต่อรายการ) กรุณาตรวจสอบตะกร้า");
+    if (ok) router.push("/cart");
+    else setMessage("เพิ่มไม่ได้: สินค้าบางชิ้นหมด หรือจำนวนรายการในตะกร้าเกินลิมิต (สูงสุด 200 รายการ) กรุณาตรวจสอบตะกร้า");
   }
 
   return (
@@ -149,7 +146,6 @@ export function PcBuilder() {
           {!!missing.length && <p className="mt-2 hidden text-center text-xs text-muted lg:block">เลือกอุปกรณ์อีก {missing.length} รายการเพื่อเพิ่มทั้งชุด</p>}
           {!missing.length && !!errors.length && <p className="mt-2 text-xs text-danger">มีอุปกรณ์ที่ไม่เข้ากัน กรุณาเปลี่ยนก่อนสั่งซื้อ</p>}
           <p role="status" aria-live="polite" className="mt-2 text-sm empty:hidden">{message}</p>
-          {added && <Link href="/cart" className={`${buttonVariants({ variant: "secondary" })} mt-2 w-full`}>ไปที่ตะกร้า<ChevronRightIcon size={16} /></Link>}
         </div>
       </aside>
 
@@ -198,7 +194,7 @@ export function PcBuilder() {
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface px-4 py-3 lg:hidden">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1"><p className="text-xs text-muted">ราคารวม {selected.length}/{buildSlots.length} รายการ</p><p className="text-lg font-semibold tabular-nums">{formatBaht(total)}</p></div>
-          {added ? <Link href="/cart" className={buttonVariants({ variant: "secondary" })}>ไปที่ตะกร้า</Link> : <Button isDisabled={!canCheckout} onPress={addToCart}><CartIcon size={18} />เพิ่มลงตะกร้า</Button>}
+          <Button isDisabled={!canCheckout} onPress={addToCart}><CartIcon size={18} />เพิ่มลงตะกร้า</Button>
         </div>
       </div>
     </div>
