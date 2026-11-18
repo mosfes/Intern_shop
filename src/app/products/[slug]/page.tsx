@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: PageProps<"/products/[slug]">
   const product = (await getCatalog()).productBySlug.get(slug);
   if (!product) return { title: "ไม่พบสินค้า" };
 
-  const image = product.images[0] || "/brand/edm-brand-preview.png";
+  const image = product.images[0] || "/brand/edm-share-cover.png";
   return {
     title: product.name,
     description: product.description,

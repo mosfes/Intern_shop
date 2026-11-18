@@ -30,13 +30,13 @@ export const metadata: Metadata = {
     siteName: "EDM PC Shop",
     title: "EDM PC Shop | ร้านอุปกรณ์คอมพิวเตอร์",
     description: "ช้อป CPU การ์ดจอ แรม SSD เมนบอร์ด จอมอนิเตอร์ และเกมมิ่งเกียร์ ของแท้ (เว็บไซต์สาธิต)",
-    images: [{ url: "/brand/edm-brand-preview.png", width: 900, height: 600, alt: "EDM PC Shop" }],
+    images: [{ url: "/brand/edm-share-cover.png", width: 1200, height: 630, alt: "EDM PC Shop และอุปกรณ์คอมพิวเตอร์" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "EDM PC Shop | ร้านอุปกรณ์คอมพิวเตอร์",
     description: "ช้อป CPU การ์ดจอ แรม SSD เมนบอร์ด จอมอนิเตอร์ และเกมมิ่งเกียร์ ของแท้ (เว็บไซต์สาธิต)",
-    images: ["/brand/edm-brand-preview.png"],
+    images: ["/brand/edm-share-cover.png"],
   },
 };
 
