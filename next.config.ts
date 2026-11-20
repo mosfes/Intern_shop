@@ -40,6 +40,14 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   images: {
+    // Vercel bills every cache miss as a transformation, so keep the variant count small and cache long:
+    // product photos rarely change (a new upload gets a new URL), so 31 days instead of the 4-hour default.
+    minimumCacheTTL: 2678400,
+    // Fewer widths = fewer unique (src, width) variants per image. Defaults are 8 device + 7 image sizes.
+    deviceSizes: [640, 1080, 1920],
+    imageSizes: [64, 128, 256, 384],
+    formats: ["image/webp"],
+    qualities: [75],
     // Product photos are served from the public Cloudflare R2 bucket (URLs come from mockapi).
     remotePatterns: process.env.NEXT_PUBLIC_IMAGE_BASE_URL
       ? [new URL(`${process.env.NEXT_PUBLIC_IMAGE_BASE_URL.replace(/\/$/, "")}/**`)]
